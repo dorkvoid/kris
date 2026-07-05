@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>8-Way Kris Controller</title>
+    <title>kristroller</title>
     <style>
         body, html {
             margin: 0;
@@ -102,11 +102,6 @@
     // ========================================================================
     // 🎨 SPRITE INJECTION ZONE
     // ========================================================================
-    // Replace these placeholder SVGs with the paths to your actual Kris sprites.
-    // Example: 'up': ['./sprites/kris_up_1.png', './sprites/kris_up_2.png']
-    // You can add as many frames per array as you want; the code loops through them.
-    // If you only have 1 frame for an idle state, just put one image in the array.
-    // ========================================================================
     
     // Helper function just for the placeholders. You can delete this later.
     function makeSVG(text, color) {
@@ -125,12 +120,19 @@
             // Left directions are handled automatically!
         },
         // WALKING SPRITES (Moving)
+        // To loop an animation, just list the image paths in order!
+        // A classic RPG walk cycle uses 4 frames: [Stand, Step 1, Stand, Step 2]
         walk: {
-            'down': ['./images/kris_walk_down_1.png', './images/kris_idle_down.png', './images/kris_walk_down_2.png', './images/kris_walk_idle.png'],
-            'up': [makeSVG('↑', '#2196F3'), makeSVG('↑', '#1976D2')],
-            'right': [makeSVG('→', '#2196F3'), makeSVG('→', '#1976D2')],
-            'down-right': [makeSVG('↘', '#2196F3'), makeSVG('↘', '#1976D2')],
-            'up-right': [makeSVG('↗', '#2196F3'), makeSVG('↗', '#1976D2')]
+            'down': [
+            './images/kris_idle_down.png', 
+            './images/kris_walk_down_1.png', 
+            './images/kris_idle_down.png',   
+            './images/kris_walk_down_2.png'   
+        ],
+            'up': [makeSVG('↑', '#2196F3'), makeSVG('↑', '#1976D2'), makeSVG('↑', '#2196F3'), makeSVG('↑', '#0D47A1')],
+            'right': [makeSVG('→', '#2196F3'), makeSVG('→', '#1976D2'), makeSVG('→', '#2196F3'), makeSVG('→', '#0D47A1')],
+            'down-right': [makeSVG('↘', '#2196F3'), makeSVG('↘', '#1976D2'), makeSVG('↘', '#2196F3'), makeSVG('↘', '#0D47A1')],
+            'up-right': [makeSVG('↗', '#2196F3'), makeSVG('↗', '#1976D2'), makeSVG('↗', '#2196F3'), makeSVG('↗', '#0D47A1')]
             // Left directions are handled automatically!
         }
     };
@@ -152,28 +154,24 @@
     const player = {
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
-        scale: 3,           // Change this number to scale the sprite up or down! (was 4)
-        speed: 2,           // Updated for 60fps (Deltarune walking is ~120px/sec)
-        walkSpeed: 2,       // 4px per frame at 30fps in GameMaker = 2px at 60fps here
-        runSpeed: 3,        // 6px per frame at 30fps in GameMaker = 3px at 60fps here
+        scale: 3,           // Change this number to scale the sprite up or down!
+        speed: 2,           // Current active speed
+        walkSpeed: 2,       // Deltarune default walking speed (adjusted for 60fps)
+        runSpeed: 3,        // Deltarune running speed (adjusted for 60fps)
         direction: 'down',  // Current facing direction
         isMoving: false,
         isRunning: false,
         frameIndex: 0,
         frameTimer: 0,
-        animationSpeed: 15, // Base animation speed
-        walkAnimSpeed: 15,  // Slower animation for walking
-        runAnimSpeed: 8     // Faster animation for running
+        walkAnimSpeed: 10,  // Frames to wait before switching sprite when walking
+        runAnimSpeed: 6     // Frames to wait before switching sprite when running (faster!)
     };
 
     // Input tracking
     const keys = {
-        ArrowUp: false,
-        ArrowDown: false,
-        ArrowLeft: false,
-        ArrowRight: false,
+        ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
         w: false, a: false, s: false, d: false,
-        Shift: false, x: false
+        Shift: false, x: false // Run buttons
     };
 
     // Keyboard Listeners
@@ -230,10 +228,9 @@
         if (keys.ArrowLeft || keys.a) dx -= 1;
         if (keys.ArrowRight || keys.d) dx += 1;
 
-        // Deltarune has a run mechanic! (Hold Shift or X)
+        // Check if running
         player.isRunning = keys.Shift || keys.x;
         player.speed = player.isRunning ? player.runSpeed : player.walkSpeed;
-        player.animationSpeed = player.isRunning ? player.runAnimSpeed : player.walkAnimSpeed;
 
         // Check if moving
         player.isMoving = (dx !== 0 || dy !== 0);
@@ -280,7 +277,9 @@
 
         // Animate if moving or if idle has multiple frames
         player.frameTimer++;
-        if (player.frameTimer >= player.animationSpeed) {
+        const currentAnimSpeed = player.isRunning ? player.runAnimSpeed : player.walkAnimSpeed;
+        
+        if (player.frameTimer >= currentAnimSpeed) {
             player.frameTimer = 0;
             player.frameIndex = (player.frameIndex + 1) % currentSpriteArray.length;
         }
@@ -293,8 +292,9 @@
 
     function render() {
         // Move the physical element on the screen
-        spriteElement.style.left = `${player.x}px`;
-        spriteElement.style.top = `${player.y}px`;
+        // We use Math.round() to prevent sub-pixel rendering, keeping it perfectly crisp!
+        spriteElement.style.left = `${Math.round(player.x)}px`;
+        spriteElement.style.top = `${Math.round(player.y)}px`;
 
         // Flip the sprite horizontally if facing any left direction
         // We apply the player.scale here so the raw pixel art is big enough to see
