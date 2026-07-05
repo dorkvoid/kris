@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>8-Way Kris Controller</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff; /* White background as requested */
+            overflow: hidden; /* Prevent scrolling when moving */
+            font-family: sans-serif;
+            touch-action: none; /* Prevent browser handling of touches like swipe-to-refresh */
+        }
+
+        #game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #player-sprite {
+            position: absolute;
+            /* Allow the image to use its natural pixel art dimensions */
+            width: auto; 
+            height: auto;
+            /* Center the image exactly on the coordinates */
+            transform: translate(-50%, -50%);
+            /* Pixel art scaling */
+            image-rendering: pixelated; 
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        /* Simple touch controls for mobile so it still works on phones */
+        #touch-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: grid;
+            grid-template-columns: 60px 60px 60px;
+            grid-template-rows: 60px 60px 60px;
+            gap: 5px;
+            opacity: 0.5;
+            z-index: 10;
+        }
+
+        @media (min-width: 768px) {
+            #touch-controls {
+                display: none; /* Hide on desktop */
+            }
+        }
+
+        .btn {
+            background: #ccc;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .btn:active {
+            background: #999;
+        }
+
+        #btn-up-left { grid-column: 1; grid-row: 1; }
+        #btn-up { grid-column: 2; grid-row: 1; }
+        #btn-up-right { grid-column: 3; grid-row: 1; }
+        #btn-left { grid-column: 1; grid-row: 2; }
+        #btn-right { grid-column: 3; grid-row: 2; }
+        #btn-down-left { grid-column: 1; grid-row: 3; }
+        #btn-down { grid-column: 2; grid-row: 3; }
+        #btn-down-right { grid-column: 3; grid-row: 3; }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- This is Kris -->
+    <img id="player-sprite" src="" alt="Kris" draggable="false">
+</div>
+
+<div id="touch-controls">
+    <div class="btn" id="btn-up-left">↖</div>
+    <div class="btn" id="btn-up">↑</div>
+    <div class="btn" id="btn-up-right">↗</div>
+    <div class="btn" id="btn-left">←</div>
+    <div class="btn" id="btn-right">→</div>
+    <div class="btn" id="btn-down-left">↙</div>
+    <div class="btn" id="btn-down">↓</div>
+    <div class="btn" id="btn-down-right">↘</div>
+</div>
+
+<script>
+    // ========================================================================
+    // 🎨 SPRITE INJECTION ZONE
+    // ========================================================================
+    // Replace these placeholder SVGs with the paths to your actual Kris sprites.
+    // Example: 'up': ['./sprites/kris_up_1.png', './sprites/kris_up_2.png']
+    // You can add as many frames per array as you want; the code loops through them.
+    // If you only have 1 frame for an idle state, just put one image in the array.
+    // ========================================================================
+    
+    // Helper function just for the placeholders. You can delete this later.
+    function makeSVG(text, color) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="${color}" rx="8"/><text x="32" y="38" font-size="30" text-anchor="middle" fill="white" font-family="sans-serif">${text}</text></svg>`;
+        return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    }
+
+    const SPRITES = {
+        // IDLE SPRITES (Standing still)
+        idle: {
+            'down': ['./images/kris_idle_down.png'],
+            'up': ['./images/kris_idle_up.png'],
+            'right': ['./images/kris_idle_right.png'],
+            'down-right': [makeSVG('↘', '#4CAF50')],
+            'up-right': [makeSVG('↗', '#4CAF50')]
+            // Left directions are handled automatically!
+        },
+        // WALKING SPRITES (Moving)
+        walk: {
+            'down': ['./images/kris_walk_down_1.png', './images/kris_idle_down.png', './images/kris_walk_down_2.png', './images/kris_walk_idle.png'],
+            'up': [makeSVG('↑', '#2196F3'), makeSVG('↑', '#1976D2')],
+            'right': [makeSVG('→', '#2196F3'), makeSVG('→', '#1976D2')],
+            'down-right': [makeSVG('↘', '#2196F3'), makeSVG('↘', '#1976D2')],
+            'up-right': [makeSVG('↗', '#2196F3'), makeSVG('↗', '#1976D2')]
+            // Left directions are handled automatically!
+        }
+    };
+
+    // Automatically map left directions to use the right direction's images
+    ['idle', 'walk'].forEach(state => {
+        SPRITES[state]['left'] = SPRITES[state]['right'];
+        SPRITES[state]['down-left'] = SPRITES[state]['down-right'];
+        SPRITES[state]['up-left'] = SPRITES[state]['up-right'];
+    });
+
+    // ========================================================================
+    // ⚙️ GAME ENGINE LOGIC
+    // ========================================================================
+
+    const spriteElement = document.getElementById('player-sprite');
+    
+    // Player State
+    const player = {
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+        scale: 3,           // Change this number to scale the sprite up or down! (was 4)
+        speed: 2,           // Updated for 60fps (Deltarune walking is ~120px/sec)
+        walkSpeed: 2,       // 4px per frame at 30fps in GameMaker = 2px at 60fps here
+        runSpeed: 3,        // 6px per frame at 30fps in GameMaker = 3px at 60fps here
+        direction: 'down',  // Current facing direction
+        isMoving: false,
+        isRunning: false,
+        frameIndex: 0,
+        frameTimer: 0,
+        animationSpeed: 15, // Base animation speed
+        walkAnimSpeed: 15,  // Slower animation for walking
+        runAnimSpeed: 8     // Faster animation for running
+    };
+
+    // Input tracking
+    const keys = {
+        ArrowUp: false,
+        ArrowDown: false,
+        ArrowLeft: false,
+        ArrowRight: false,
+        w: false, a: false, s: false, d: false,
+        Shift: false, x: false
+    };
+
+    // Keyboard Listeners
+    window.addEventListener('keydown', (e) => {
+        if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.key.toLowerCase())) {
+            keys[e.key.toLowerCase()] = true;
+            keys[e.key] = true; 
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.key.toLowerCase())) {
+            keys[e.key.toLowerCase()] = false;
+            keys[e.key] = false;
+        }
+    });
+
+    // Touch Controls Listeners (for mobile support)
+    const setupTouchBtn = (id, dirs) => {
+        const btn = document.getElementById(id);
+        const start = (e) => { e.preventDefault(); dirs.forEach(d => keys[d] = true); };
+        const end = (e) => { e.preventDefault(); dirs.forEach(d => keys[d] = false); };
+        btn.addEventListener('touchstart', start);
+        btn.addEventListener('touchend', end);
+        btn.addEventListener('mousedown', start);
+        btn.addEventListener('mouseup', end);
+        btn.addEventListener('mouseleave', end);
+    };
+
+    setupTouchBtn('btn-up', ['ArrowUp']);
+    setupTouchBtn('btn-down', ['ArrowDown']);
+    setupTouchBtn('btn-left', ['ArrowLeft']);
+    setupTouchBtn('btn-right', ['ArrowRight']);
+    setupTouchBtn('btn-up-left', ['ArrowUp', 'ArrowLeft']);
+    setupTouchBtn('btn-up-right', ['ArrowUp', 'ArrowRight']);
+    setupTouchBtn('btn-down-left', ['ArrowDown', 'ArrowLeft']);
+    setupTouchBtn('btn-down-right', ['ArrowDown', 'ArrowRight']);
+
+
+    // Main Game Loop
+    function gameLoop() {
+        updateMovement();
+        updateAnimation();
+        render();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function updateMovement() {
+        let dx = 0;
+        let dy = 0;
+
+        if (keys.ArrowUp || keys.w) dy -= 1;
+        if (keys.ArrowDown || keys.s) dy += 1;
+        if (keys.ArrowLeft || keys.a) dx -= 1;
+        if (keys.ArrowRight || keys.d) dx += 1;
+
+        // Deltarune has a run mechanic! (Hold Shift or X)
+        player.isRunning = keys.Shift || keys.x;
+        player.speed = player.isRunning ? player.runSpeed : player.walkSpeed;
+        player.animationSpeed = player.isRunning ? player.runAnimSpeed : player.walkAnimSpeed;
+
+        // Check if moving
+        player.isMoving = (dx !== 0 || dy !== 0);
+
+        if (player.isMoving) {
+            // Determine 8-way direction string based on dx/dy
+            if (dx === 0 && dy < 0) player.direction = 'up';
+            else if (dx === 0 && dy > 0) player.direction = 'down';
+            else if (dx < 0 && dy === 0) player.direction = 'left';
+            else if (dx > 0 && dy === 0) player.direction = 'right';
+            else if (dx > 0 && dy > 0) player.direction = 'down-right';
+            else if (dx < 0 && dy > 0) player.direction = 'down-left';
+            else if (dx > 0 && dy < 0) player.direction = 'up-right';
+            else if (dx < 0 && dy < 0) player.direction = 'up-left';
+
+            // Normalize diagonal movement speed (Pythagorean theorem!)
+            // If we didn't do this, diagonal movement would be 1.4x faster
+            const length = Math.sqrt(dx * dx + dy * dy);
+            dx = dx / length;
+            dy = dy / length;
+
+            // Apply speed
+            player.x += dx * player.speed;
+            player.y += dy * player.speed;
+
+            // Screen boundaries clamping (using getBoundingClientRect for scaled size)
+            const rect = spriteElement.getBoundingClientRect();
+            const halfWidth = rect.width / 2;
+            const halfHeight = rect.height / 2;
+            player.x = Math.max(halfWidth, Math.min(window.innerWidth - halfWidth, player.x));
+            player.y = Math.max(halfHeight, Math.min(window.innerHeight - halfHeight, player.y));
+        }
+    }
+
+    function updateAnimation() {
+        const state = player.isMoving ? 'walk' : 'idle';
+        const currentSpriteArray = SPRITES[state][player.direction];
+
+        // If we only have 1 frame for this state/direction, just show it
+        if (currentSpriteArray.length <= 1) {
+            player.frameIndex = 0;
+            return;
+        }
+
+        // Animate if moving or if idle has multiple frames
+        player.frameTimer++;
+        if (player.frameTimer >= player.animationSpeed) {
+            player.frameTimer = 0;
+            player.frameIndex = (player.frameIndex + 1) % currentSpriteArray.length;
+        }
+
+        // Reset animation index if we stop moving to prevent weird snapping
+        if (!player.isMoving && SPRITES.idle[player.direction].length === 1) {
+             player.frameIndex = 0;
+        }
+    }
+
+    function render() {
+        // Move the physical element on the screen
+        spriteElement.style.left = `${player.x}px`;
+        spriteElement.style.top = `${player.y}px`;
+
+        // Flip the sprite horizontally if facing any left direction
+        // We apply the player.scale here so the raw pixel art is big enough to see
+        const isFacingLeft = player.direction.includes('left');
+        spriteElement.style.transform = `translate(-50%, -50%) scale(${isFacingLeft ? -player.scale : player.scale}, ${player.scale})`;
+
+        // Update the image source based on current state, direction, and animation frame
+        const state = player.isMoving ? 'walk' : 'idle';
+        
+        // Failsafe in case a sprite array is missing or empty during user injection
+        if (SPRITES[state] && SPRITES[state][player.direction]) {
+            const frames = SPRITES[state][player.direction];
+            // Ensure the frame index doesn't go out of bounds if arrays have different lengths
+            const safeFrameIndex = player.frameIndex % frames.length;
+            spriteElement.src = frames[safeFrameIndex];
+        }
+    }
+
+    // Handle window resize so player doesn't get stuck outside screen
+    window.addEventListener('resize', () => {
+        const rect = spriteElement.getBoundingClientRect();
+        const halfWidth = rect.width / 2;
+        const halfHeight = rect.height / 2;
+        player.x = Math.max(halfWidth, Math.min(window.innerWidth - halfWidth, player.x));
+        player.y = Math.max(halfHeight, Math.min(window.innerHeight - halfHeight, player.y));
+    });
+
+    // Start the game loop
+    window.onload = () => {
+        // Initial setup
+        spriteElement.src = SPRITES.idle.down[0];
+        requestAnimationFrame(gameLoop);
+    };
+
+</script>
+</body>
+</html>
