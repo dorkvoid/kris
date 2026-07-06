@@ -38,15 +38,10 @@
 
         /* --- THE NEW SCALABLE CUSTOM CURSOR --- */
         #custom-cursor {
-            position: absolute;
-            /* IMPORTANT: These should match the exact raw size of your cursor.png */
+            position: fixed; /* Changed to fixed so it perfectly tracks the screen */
             width: 16px; 
             height: 16px;
-            /* Point to your cursor image */
-            background-image: url('./images/cursor.png');
-            background-size: 100% 100%; /* Prevents strange stretching */
-            
-            /* Force crisp pixel art scaling on ALL browsers */
+            /* Force crisp pixel art scaling */
             image-rendering: -webkit-optimize-contrast; 
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
@@ -55,15 +50,9 @@
             pointer-events: none; 
             z-index: 9999; 
             
-            /* Scale it up as big as you want! */
             transform-origin: top left;
-            transform: scale(1); 
+            transform: scale(2); /* Made it big again! */
             display: none; 
-        }
-        
-        /* Change the image when the user clicks */
-        body:active #custom-cursor {
-            background-image: url('./images/cursor_click.png');
         }
 
         #instruction-bg {
@@ -107,6 +96,8 @@
             width: auto; 
             height: auto;
             transform: translate(-50%, -50%);
+            transform-origin: center bottom; /* Anchors the bottom edge so feet stay planted! */
+            /* Prevents mipmapping and forces true pixel-art scaling on all modern browsers */
             image-rendering: -webkit-optimize-contrast;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
@@ -118,6 +109,8 @@
             -webkit-user-drag: none;
             /* Changed to auto so we can actually click on Kris! */
             pointer-events: auto; 
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         #touch-controls {
@@ -168,8 +161,8 @@
 <body>
 
 <div id="game-container">
-    <!-- Our new scalable cursor element -->
-    <div id="custom-cursor"></div>
+    <!-- Swapped from a div to an image tag so we can use a fallback! -->
+    <img id="custom-cursor" src="./images/cursor.png" alt="cursor">
 
     <!-- Background Instructions -->
     <img id="instruction-bg" src="./images/instr.png" alt="Instructions" draggable="false">
@@ -271,16 +264,33 @@
     const customCursor = document.getElementById('custom-cursor');
 
     // --- CUSTOM CURSOR TRACKING ---
-    // Make the cursor follow the mouse! (It starts as display: none so it doesn't show on mobile)
+    // A built-in SVG fallback just in case the image path is broken!
+    const FALLBACK_CURSOR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpolygon points='0,0 0,14 4,10 8,14 11,12 7,8 12,8' fill='white' stroke='black' stroke-width='1'/%3E%3C/svg%3E";
+    customCursor.addEventListener('error', function() {
+        if (this.src !== FALLBACK_CURSOR) this.src = FALLBACK_CURSOR;
+    });
+
     window.addEventListener('mousemove', (e) => {
         customCursor.style.display = 'block';
         customCursor.style.left = `${e.clientX}px`;
         customCursor.style.top = `${e.clientY}px`;
     });
     
-    // Hide it again if the mouse leaves the browser window
     document.addEventListener('mouseleave', () => {
         customCursor.style.display = 'none';
+    });
+
+    // Swap cursor image on click
+    window.addEventListener('mousedown', () => {
+        // Only swap if it hasn't fallen back to the emergency SVG state
+        if (!customCursor.src.includes('svg+xml')) {
+            customCursor.src = './images/cursor_click.png';
+        }
+    });
+    window.addEventListener('mouseup', () => {
+        if (!customCursor.src.includes('svg+xml')) {
+            customCursor.src = './images/cursor.png';
+        }
     });
     
     // --- PREVIEW FALLBACK ---
@@ -479,9 +489,8 @@
             const finalScaleX = (isFlipped ? -player.scale : player.scale) * player.squishX;
             const finalScaleY = player.scale * player.squishY;
             
-            // We adjust the Y translation dynamically so Kris squishes against the floor, not toward their center!
-            const yOffset = -50 + ((1.0 - player.squishY) * 50);
-            spriteElement.style.transform = `translate(-50%, ${yOffset}%) scale(${finalScaleX}, ${finalScaleY})`;
+            // Simplified translation since transform-origin now handles the floor planting natively!
+            spriteElement.style.transform = `translate(-50%, -50%) scale(${finalScaleX}, ${finalScaleY})`;
             
             // Compare against our memory variable instead of the DOM to guarantee the first frame loads
             if (player.currentSrc !== targetSrc) {
