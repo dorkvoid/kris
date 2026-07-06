@@ -126,11 +126,10 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none; /* Let touches pass through the empty areas */
+            pointer-events: none; 
             z-index: 20;
         }
 
-        /* Hide the mobile UI completely on desktops */
         @media (min-width: 768px) {
             #mobile-ui {
                 display: none; 
@@ -146,19 +145,19 @@
             background-color: rgba(0, 0, 0, 0.15);
             border: 2px solid rgba(0, 0, 0, 0.2);
             border-radius: 50%;
-            pointer-events: auto; /* Catch touches here */
+            pointer-events: auto; 
             touch-action: none;
         }
 
         #joystick-stick {
             position: absolute;
-            top: 30px; /* Centered in the 120px base */
+            top: 30px; 
             left: 30px;
             width: 60px;
             height: 60px;
             background-color: rgba(0, 0, 0, 0.4);
             border-radius: 50%;
-            transition: transform 0.2s ease-out; /* Smooth snap-back when let go */
+            transition: transform 0.2s ease-out; 
         }
 
         #mobile-run-btn {
@@ -176,7 +175,7 @@
             color: rgba(0,0,0,0.5);
             font-weight: bold;
             font-size: 20px;
-            pointer-events: auto; /* Catch touches here */
+            pointer-events: auto; 
             touch-action: none;
             user-select: none;
             -webkit-user-select: none;
@@ -191,7 +190,6 @@
     </style>
 </head>
 <body>
-
 <div id="game-container">
     <img id="custom-cursor" src="./images/cursor.png" alt="cursor">
     <img id="instruction-bg" src="./images/instr.png" alt="Instructions" draggable="false">
@@ -199,7 +197,6 @@
     <img id="player-sprite" alt="Kris" draggable="false">
 </div>
 
-<!-- NEW VIRTUAL JOYSTICK & RUN BUTTON -->
 <div id="mobile-ui">
     <div id="joystick-base">
         <div id="joystick-stick"></div>
@@ -208,10 +205,6 @@
 </div>
 
 <script>
-    // ========================================================================
-    // 🎨 SPRITE INJECTION ZONE
-    // ========================================================================
-    
     const SPRITES = {
         idle: {
             'down': ['./images/kris_idle_down.png'],
@@ -260,9 +253,6 @@
         SPRITES[state]['up-left'] = SPRITES[state]['up-right'];
     });
 
-    // ========================================================================
-    // 🚀 ASSET PRELOADER (Fixes Animation Jitter!)
-    // ========================================================================
     const preloadedImages = {};
     Object.keys(SPRITES).forEach(state => {
         Object.keys(SPRITES[state]).forEach(dir => {
@@ -275,10 +265,6 @@
             });
         });
     });
-
-    // ========================================================================
-    // ⚙️ GAME ENGINE LOGIC
-    // ========================================================================
 
     const spriteElement = document.getElementById('player-sprite');
     const shadowElement = document.getElementById('player-shadow');
@@ -338,46 +324,52 @@
         gamepadSquishReady: false 
     };
 
-    // --- AUDIO SETUP ---
-    const sqekSound = new Audio('./sqek.mp3');
-    sqekSound.volume = 0.2; // Keep it quiet (20% volume)
+    // --- SQUISH MECHANIC WITH SOUND ---
+    const squishSound = new Audio('./sqek.mp3');
+    squishSound.volume = 0.2; 
 
-    function playSqek() {
-        sqekSound.currentTime = 0; // Reset time to 0 so you can spam the click rapidly
-        // We catch the error just in case the browser tries to block autoplay before the user clicks
-        sqekSound.play().catch(err => console.log("Audio play blocked:", err));
-    }
-
-    // --- SQUISH MECHANIC ---
     const squishKris = (e) => {
-        if (e.type === 'mousedown' && e.button !== 0) return; 
+        if (e && e.type === 'mousedown' && e.button !== 0) return; 
+        
         player.squishY = 0.5; 
         player.squishX = 1.3; 
-        playSqek(); // Play sound on click/touch
+        
+        squishSound.currentTime = 0;
+        squishSound.play().catch(err => {
+            console.log("Squish sound blocked until player interacts with the page.");
+        });
     };
     spriteElement.addEventListener('mousedown', squishKris);
     spriteElement.addEventListener('touchstart', squishKris, {passive: true});
 
-    // --- INPUT TRACKING ---
+    // --- INPUT TRACKING (FIXED FOR INTERNATIONAL KEYBOARDS) ---
+    // Instead of mapping 'w' 'a' 's' 'd' letters which change depending on the layout,
+    // we map directly to logical up/down/left/right concepts.
     const keys = {
-        ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
-        w: false, a: false, s: false, d: false,
-        Shift: false, x: false 
+        up: false, down: false, left: false, right: false,
+        run: false 
     };
 
     window.addEventListener('keydown', (e) => {
-        if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.key.toLowerCase())) {
-            keys[e.key.toLowerCase()] = true;
-            keys[e.key] = true; 
+        // Checking both e.code (physical key) and e.key (logical key) ensures complete cross-layout compatibility!
+        if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.key === 'w' || e.key === 'W') keys.up = true;
+        if (e.code === 'ArrowDown' || e.code === 'KeyS' || e.key === 's' || e.key === 'S') keys.down = true;
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.key === 'a' || e.key === 'A') keys.left = true;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD' || e.key === 'd' || e.key === 'D') keys.right = true;
+        
+        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift' || e.code === 'KeyX' || e.key === 'x' || e.key === 'X') {
+            keys.run = true;
             if (e.key === 'Shift') e.preventDefault();
         }
     });
 
     window.addEventListener('keyup', (e) => {
-        if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.key.toLowerCase())) {
-            keys[e.key.toLowerCase()] = false;
-            keys[e.key] = false;
-        }
+        if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.key === 'w' || e.key === 'W') keys.up = false;
+        if (e.code === 'ArrowDown' || e.code === 'KeyS' || e.key === 's' || e.key === 'S') keys.down = false;
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.key === 'a' || e.key === 'A') keys.left = false;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD' || e.key === 'd' || e.key === 'D') keys.right = false;
+        
+        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift' || e.code === 'KeyX' || e.key === 'x' || e.key === 'X') keys.run = false;
     });
 
     // --- VIRTUAL JOYSTICK LOGIC ---
@@ -392,14 +384,12 @@
     const handleJoystickMove = (e) => {
         e.preventDefault(); 
         isJoystickActive = true;
-        joystickStick.style.transition = 'none'; // Follow finger instantly
+        joystickStick.style.transition = 'none'; 
         
-        // Grab position depending on if it's a mouse or touch
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
         const rect = joystickBase.getBoundingClientRect();
-        // Calculate the exact center of the joystick base
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         
@@ -407,9 +397,8 @@
         let deltaY = clientY - centerY;
         
         const distance = Math.hypot(deltaX, deltaY);
-        const maxDist = 45; // Furthest the stick can visually be dragged
+        const maxDist = 45; 
         
-        // Clamp the visual stick within the circle
         let visualX = deltaX;
         let visualY = deltaY;
         if (distance > maxDist) {
@@ -418,7 +407,6 @@
         }
         joystickStick.style.transform = `translate(${visualX}px, ${visualY}px)`;
         
-        // Emulate the 8-way keyboard using a "deadzone" threshold
         joyDX = 0;
         joyDY = 0;
         const threshold = 15; 
@@ -446,16 +434,14 @@
     joystickBase.addEventListener('touchend', handleJoystickEnd);
     joystickBase.addEventListener('touchcancel', handleJoystickEnd);
 
-    // Mouse fallback for testing the joystick on PC
     let mouseDragging = false;
     joystickBase.addEventListener('mousedown', (e) => { mouseDragging = true; handleJoystickMove(e); });
     window.addEventListener('mousemove', (e) => { if (mouseDragging) handleJoystickMove(e); });
     window.addEventListener('mouseup', (e) => { if (mouseDragging) { mouseDragging = false; handleJoystickEnd(e); } });
 
-    // Mobile Run Button listeners
     const toggleRun = (e, state) => {
         if (e && e.cancelable) e.preventDefault();
-        keys.Shift = state;
+        keys.run = state;
         if (state) mobileRunBtn.classList.add('mobile-run-active');
         else mobileRunBtn.classList.remove('mobile-run-active');
     };
@@ -466,7 +452,6 @@
     mobileRunBtn.addEventListener('mousedown', (e) => toggleRun(e, true));
     mobileRunBtn.addEventListener('mouseup', (e) => toggleRun(e, false));
     mobileRunBtn.addEventListener('mouseleave', (e) => toggleRun(e, false));
-
 
     // --- MAIN GAME LOOP ---
     function gameLoop() {
@@ -482,12 +467,12 @@
         let isRunning = false;
 
         // --- KEYBOARD SUPPORT ---
-        if (keys.ArrowUp || keys.w) dy -= 1;
-        if (keys.ArrowDown || keys.s) dy += 1;
-        if (keys.ArrowLeft || keys.a) dx -= 1;
-        if (keys.ArrowRight || keys.d) dx += 1;
+        if (keys.up) dy -= 1;
+        if (keys.down) dy += 1;
+        if (keys.left) dx -= 1;
+        if (keys.right) dx += 1;
         
-        if (keys.Shift || keys.x) isRunning = true;
+        if (keys.run) isRunning = true;
 
         // --- MOBILE JOYSTICK SUPPORT ---
         if (isJoystickActive) {
@@ -519,10 +504,8 @@
 
                 if (gp.buttons[0] && gp.buttons[0].pressed) {
                     if (!player.gamepadSquishReady) {
-                        player.squishY = 0.5;
-                        player.squishX = 1.3;
+                        squishKris(); // Use the standard squish function to trigger sound!
                         player.gamepadSquishReady = true;
-                        playSqek(); // Play sound on controller 'A' button press
                     }
                 } else {
                     player.gamepadSquishReady = false;
