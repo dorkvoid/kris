@@ -25,10 +25,15 @@
         /* The new pixel shadow */
         #player-shadow {
             position: absolute;
-            width: 18px; 
+            width: 14px; 
             height: 6px;
-            background-color: rgba(0, 0, 0, 0.25);
-            border-radius: 50%;
+            /* Using a hard-coded, pixel-perfect SVG oval instead of a smooth border-radius */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='6' viewBox='0 0 14 6' shape-rendering='crispEdges'%3E%3Crect x='2' y='0' width='10' height='6' fill='rgba(0,0,0,0.25)'/%3E%3Crect x='0' y='1' width='14' height='4' fill='rgba(0,0,0,0.25)'/%3E%3C/svg%3E");
+            background-size: cover;
+            background-repeat: no-repeat;
+            image-rendering: pixelated; 
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
             /* Pixel scaling applied in JS */
             transform: translate(-50%, -50%);
         }
@@ -175,16 +180,16 @@
         y: window.innerHeight / 2,
         scale: 3,           
         shadowOffset: 16,   // Tweak this number to move the shadow up/down! (16 fits a ~38px tall sprite)
-        speed: 2,           
-        walkSpeed: 2,       
-        runSpeed: 3,        
+        speed: 1.5,         // Initial speed
+        walkSpeed: 1.5,     // Slower! (was 2)
+        runSpeed: 2.5,      // Slower! (was 3)
         direction: 'down',  
         isMoving: false,
         isRunning: false,
         frameIndex: 0,
         frameTimer: 0,
-        walkAnimSpeed: 15,  // Slowed down! (was 10)
-        runAnimSpeed: 8,    // Slowed down! (was 6)
+        walkAnimSpeed: 20,  // Even slower! Updates every 20 frames now (was 15)
+        runAnimSpeed: 12,   // Slower running animation! (was 8)
         currentSrc: null    
     };
 
