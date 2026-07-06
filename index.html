@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>8-Way Kris Controller</title>
+    <title>kristroller</title>
     <style>
         body, html {
             margin: 0;
@@ -51,9 +51,9 @@
             pointer-events: none; /* Crucial: lets clicks pass THROUGH the cursor image to the buttons below */
             z-index: 9999; /* Put it above absolutely everything else */
             
-            /* Scale it up as big as you want! (e.g., 2 = 64x64, 3 = 96x96) */
+            /* Scale it up as big as you want! */
             transform-origin: top left;
-            transform: scale(2); 
+            transform: scale(1.5); /* Made it slightly tinier (was scale 2) */
             display: none; /* Hidden until mouse moves to prevent it sitting in the top corner */
         }
         
@@ -68,7 +68,7 @@
             left: 50%; 
             transform: translateX(-50%) scale(4); /* Made it MASSIVE (was scale 2) */
             transform-origin: top center; 
-            opacity: 0.5; /* Made it semi-transparent! */
+            opacity: 0.25; /* Made it more transparent (was 0.5) */
             image-rendering: pixelated;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
