@@ -3,22 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>kristroller</title>
+    <title>krisroller</title>
     <style>
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            background-color: #a3a3a3;
+            background-color: #cfcfcf;
             overflow: hidden; 
             font-family: sans-serif;
             touch-action: none;
+            
+            /* User select none prevents highlighting when holding shift and clicking! */
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            
             /* Custom Cursors! */
+            /* If you want them bigger, scale the physical .png file up in Aseprite (e.g., 32x32 or 48x48) */
             cursor: url('./images/cursor.png'), auto;
         }
 
-        /* Changes the cursor when you click anywhere on the page */
         body:active, html:active {
             cursor: url('./images/cursor_click.png'), auto;
         }
@@ -27,6 +34,23 @@
             width: 100%;
             height: 100%;
             position: relative;
+        }
+
+        #instruction-bg {
+            position: absolute;
+            top: 10%; /* Pushes it down slightly from the very top */
+            left: 50%; /* Centers it horizontally */
+            transform: translateX(-50%);
+            /* Keeps the pixel art crisp if it's scaled */
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            z-index: 0; /* Layer 0: The very bottom background layer */
+            
+            /* Prevent highlighting or dragging */
+            user-drag: none;
+            -webkit-user-drag: none;
+            pointer-events: none;
         }
 
         /* Updated to support your custom shadow.png */
@@ -40,6 +64,13 @@
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
             image-rendering: pixelated; 
+            opacity: 0.6; /* Added transparency (1 is solid, 0 is invisible) */
+            z-index: 1; /* Layer 1: Renders above the instructions */
+            
+            /* Extra safety to ensure the image itself cannot be highlighted or dragged */
+            user-drag: none;
+            -webkit-user-drag: none;
+            pointer-events: none; /* Let clicks pass right through the shadow */
         }
 
         #player-sprite {
@@ -53,6 +84,12 @@
             image-rendering: crisp-edges;
             image-rendering: pixelated; 
             color: transparent; 
+            z-index: 2; /* Layer 2: Renders above the shadow and instructions */
+            
+            /* Extra safety to ensure Kris cannot be highlighted or dragged */
+            user-drag: none;
+            -webkit-user-drag: none;
+            pointer-events: none; /* Let clicks pass right through Kris */
         }
 
         #touch-controls {
@@ -82,6 +119,7 @@
             font-size: 24px;
             user-select: none;
             -webkit-user-select: none;
+            pointer-events: auto; /* Buttons still need to be clickable despite the body rule */
         }
         
         .btn:active {
@@ -102,6 +140,9 @@
 <body>
 
 <div id="game-container">
+    <!-- Background Instructions -->
+    <img id="instruction-bg" src="./images/instr.png" alt="Instructions" draggable="false">
+    
     <!-- Replaced the div with an image tag pointing to your shadow -->
     <img id="player-shadow" src="./images/shadow.png" alt="shadow" draggable="false">
     <img id="player-sprite" alt="Kris" draggable="false">
@@ -202,7 +243,7 @@
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
         scale: 3,           
-        shadowOffset: 16,   // Tweak this number to move the shadow up/down!
+        shadowOffset: 18,   // Increased from 16 to 18 to move the shadow down
         speed: 1.5,         
         walkSpeed: 1.5,     
         runSpeed: 2.5,      
@@ -228,6 +269,11 @@
         if (keys.hasOwnProperty(e.key) || keys.hasOwnProperty(e.key.toLowerCase())) {
             keys[e.key.toLowerCase()] = true;
             keys[e.key] = true; 
+            
+            // Prevent Shift from trying to highlight text in some browsers
+            if (e.key === 'Shift') {
+                e.preventDefault();
+            }
         }
     });
 
