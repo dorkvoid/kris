@@ -95,7 +95,8 @@
             position: absolute;
             width: auto; 
             height: auto;
-            transform: translate(-50%, -50%);
+            /* Changed to -100% so the bottom of the image is anchored to the Y coordinate */
+            transform: translate(-50%, -100%); 
             transform-origin: center bottom; /* Anchors the bottom edge so feet stay planted! */
             /* Prevents mipmapping and forces true pixel-art scaling on all modern browsers */
             image-rendering: -webkit-optimize-contrast;
@@ -305,7 +306,7 @@
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
         scale: 3,           
-        shadowOffset: 17,   
+        shadowOffset: 0,    // Reset to 0! The shadow and feet now share the exact same floor coordinate.
         speed: 1.5,         
         walkSpeed: 1.5,     
         runSpeed: 2.5,      
@@ -489,8 +490,8 @@
             const finalScaleX = (isFlipped ? -player.scale : player.scale) * player.squishX;
             const finalScaleY = player.scale * player.squishY;
             
-            // Simplified translation since transform-origin now handles the floor planting natively!
-            spriteElement.style.transform = `translate(-50%, -50%) scale(${finalScaleX}, ${finalScaleY})`;
+            // Align to the floor (-100%) instead of the center (-50%)
+            spriteElement.style.transform = `translate(-50%, -100%) scale(${finalScaleX}, ${finalScaleY})`;
             
             // Compare against our memory variable instead of the DOM to guarantee the first frame loads
             if (player.currentSrc !== targetSrc) {
