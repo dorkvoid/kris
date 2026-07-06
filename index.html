@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>kristrollerr</title>
+    <title>8-Way Kris Controller</title>
     <style>
         body, html {
             margin: 0;
@@ -22,6 +22,17 @@
             position: relative;
         }
 
+        /* The new pixel shadow */
+        #player-shadow {
+            position: absolute;
+            width: 18px; 
+            height: 6px;
+            background-color: rgba(0, 0, 0, 0.25);
+            border-radius: 50%;
+            /* Pixel scaling applied in JS */
+            transform: translate(-50%, -50%);
+        }
+
         #player-sprite {
             position: absolute;
             width: auto; 
@@ -30,7 +41,6 @@
             image-rendering: pixelated; 
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
-            /* Prevents the default broken image icon from stretching the box if a path is wrong */
             color: transparent; 
         }
 
@@ -81,7 +91,8 @@
 <body>
 
 <div id="game-container">
-    <!-- Removed the empty src="" so the browser doesn't hang on load -->
+    <!-- Shadow is placed first so it renders BEHIND Kris -->
+    <div id="player-shadow"></div>
     <img id="player-sprite" alt="Kris" draggable="false">
 </div>
 
@@ -101,8 +112,7 @@
     // 🎨 SPRITE INJECTION ZONE
     // ========================================================================
     
-    // I replaced all the SVG placeholders with your actual folder paths 
-    // so the character size stays completely consistent!
+    // Removed the FLIP mechanic per your request. Just pure image paths now!
     const SPRITES = {
         idle: {
             'down': ['./images/kris_idle_down.png'],
@@ -116,13 +126,13 @@
                 './images/kris_idle_down.png', 
                 './images/kris_walk_down_1.png', 
                 './images/kris_idle_down.png',   
-                'FLIP:./images/kris_walk_down_1.png'   
+                './images/kris_walk_down_2.png'   
             ],
             'up': [
                 './images/kris_idle_up.png', 
                 './images/kris_walk_up_1.png', 
                 './images/kris_idle_up.png',   
-                'FLIP:./images/kris_walk_up_1.png' 
+                './images/kris_walk_up_2.png' 
             ],
             'right': [
                 './images/kris_idle_right.png', 
@@ -157,12 +167,14 @@
     // ========================================================================
 
     const spriteElement = document.getElementById('player-sprite');
+    const shadowElement = document.getElementById('player-shadow');
     
     // Player State
     const player = {
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
         scale: 3,           
+        shadowOffset: 16,   // Tweak this number to move the shadow up/down! (16 fits a ~38px tall sprite)
         speed: 2,           
         walkSpeed: 2,       
         runSpeed: 3,        
@@ -171,9 +183,9 @@
         isRunning: false,
         frameIndex: 0,
         frameTimer: 0,
-        walkAnimSpeed: 10,  
-        runAnimSpeed: 6,
-        currentSrc: null    // Added to reliably track the image state in memory
+        walkAnimSpeed: 15,  // Slowed down! (was 10)
+        runAnimSpeed: 8,    // Slowed down! (was 6)
+        currentSrc: null    
     };
 
     // Input tracking
@@ -300,6 +312,13 @@
     }
 
     function render() {
+        // --- 1. RENDER SHADOW ---
+        // Shadow shares the X coordinate, but sits slightly lower on the Y coordinate
+        shadowElement.style.left = `${Math.round(player.x)}px`;
+        shadowElement.style.top = `${Math.round(player.y + (player.shadowOffset * player.scale))}px`;
+        shadowElement.style.transform = `translate(-50%, -50%) scale(${player.scale})`;
+
+        // --- 2. RENDER KRIS ---
         spriteElement.style.left = `${Math.round(player.x)}px`;
         spriteElement.style.top = `${Math.round(player.y)}px`;
 
@@ -308,16 +327,10 @@
         if (SPRITES[state] && SPRITES[state][player.direction]) {
             const frames = SPRITES[state][player.direction];
             const safeFrameIndex = player.frameIndex % frames.length;
-            let targetSrc = frames[safeFrameIndex];
+            const targetSrc = frames[safeFrameIndex];
             
             // Base horizontal flip based on direction
-            let isFlipped = player.direction.includes('left');
-
-            // Allow specific animation frames to be mirrored (e.g., FLIP:./images/...)
-            if (targetSrc.startsWith('FLIP:')) {
-                isFlipped = !isFlipped; // Toggle flip state
-                targetSrc = targetSrc.replace('FLIP:', ''); // Remove prefix before loading
-            }
+            const isFlipped = player.direction.includes('left');
 
             // Apply scale and potential flip
             spriteElement.style.transform = `translate(-50%, -50%) scale(${isFlipped ? -player.scale : player.scale}, ${player.scale})`;
@@ -341,7 +354,7 @@
         player.y = Math.max(halfHeight, Math.min(window.innerHeight - halfHeight, player.y));
     });
 
-    // Start the game loop immediately! (No need to wait for window.onload)
+    // Start the game loop immediately!
     requestAnimationFrame(gameLoop);
 
 </script>
