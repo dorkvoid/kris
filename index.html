@@ -72,7 +72,7 @@
             left: 50%; 
             transform: translateX(-50%) scale(4); /* Made it MASSIVE (was scale 2) */
             transform-origin: top center; 
-            opacity: 0.25; /* Made it more transparent (was 0.5) */
+            opacity: 0.10; /* Made it even MORE transparent (was 0.25) */
             image-rendering: pixelated;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
@@ -268,6 +268,20 @@
 
     const spriteElement = document.getElementById('player-sprite');
     const shadowElement = document.getElementById('player-shadow');
+    const customCursor = document.getElementById('custom-cursor');
+
+    // --- CUSTOM CURSOR TRACKING ---
+    // Make the cursor follow the mouse! (It starts as display: none so it doesn't show on mobile)
+    window.addEventListener('mousemove', (e) => {
+        customCursor.style.display = 'block';
+        customCursor.style.left = `${e.clientX}px`;
+        customCursor.style.top = `${e.clientY}px`;
+    });
+    
+    // Hide it again if the mouse leaves the browser window
+    document.addEventListener('mouseleave', () => {
+        customCursor.style.display = 'none';
+    });
     
     // --- PREVIEW FALLBACK ---
     // If you load this without the images, this injects a cute pixel-person placeholder!
