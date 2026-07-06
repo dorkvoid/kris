@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>kristroller</title>
+    <title>kristrollerr</title>
     <style>
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            background-color: #ffffff; /* White background as requested */
-            overflow: hidden; /* Prevent scrolling when moving */
+            background-color: #ffffff;
+            overflow: hidden; 
             font-family: sans-serif;
-            touch-action: none; /* Prevent browser handling of touches like swipe-to-refresh */
+            touch-action: none; 
         }
 
         #game-container {
@@ -24,18 +24,16 @@
 
         #player-sprite {
             position: absolute;
-            /* Allow the image to use its natural pixel art dimensions */
             width: auto; 
             height: auto;
-            /* Center the image exactly on the coordinates */
             transform: translate(-50%, -50%);
-            /* Pixel art scaling */
             image-rendering: pixelated; 
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
+            /* Prevents the default broken image icon from stretching the box if a path is wrong */
+            color: transparent; 
         }
 
-        /* Simple touch controls for mobile so it still works on phones */
         #touch-controls {
             position: absolute;
             bottom: 20px;
@@ -50,7 +48,7 @@
 
         @media (min-width: 768px) {
             #touch-controls {
-                display: none; /* Hide on desktop */
+                display: none; 
             }
         }
 
@@ -83,8 +81,8 @@
 <body>
 
 <div id="game-container">
-    <!-- This is Kris -->
-    <img id="player-sprite" src="" alt="Kris" draggable="false">
+    <!-- Removed the empty src="" so the browser doesn't hang on load -->
+    <img id="player-sprite" alt="Kris" draggable="false">
 </div>
 
 <div id="touch-controls">
@@ -103,37 +101,47 @@
     // 🎨 SPRITE INJECTION ZONE
     // ========================================================================
     
-    // Helper function just for the placeholders. You can delete this later.
-    function makeSVG(text, color) {
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="${color}" rx="8"/><text x="32" y="38" font-size="30" text-anchor="middle" fill="white" font-family="sans-serif">${text}</text></svg>`;
-        return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-    }
-
+    // I replaced all the SVG placeholders with your actual folder paths 
+    // so the character size stays completely consistent!
     const SPRITES = {
-        // IDLE SPRITES (Standing still)
         idle: {
             'down': ['./images/kris_idle_down.png'],
             'up': ['./images/kris_idle_up.png'],
             'right': ['./images/kris_idle_right.png'],
-            'down-right': [makeSVG('↘', '#4CAF50')],
-            'up-right': [makeSVG('↗', '#4CAF50')]
-            // Left directions are handled automatically!
+            'down-right': ['./images/kris_idle_dr.png'],
+            'up-right': ['./images/kris_idle_ur.png']
         },
-        // WALKING SPRITES (Moving)
-        // To loop an animation, just list the image paths in order!
-        // A classic RPG walk cycle uses 4 frames: [Stand, Step 1, Stand, Step 2]
         walk: {
             'down': [
-            './images/kris_idle_down.png', 
-            './images/kris_walk_down_1.png', 
-            './images/kris_idle_down.png',   
-            './images/kris_walk_down_2.png'   
-        ],
-            'up': [makeSVG('↑', '#2196F3'), makeSVG('↑', '#1976D2'), makeSVG('↑', '#2196F3'), makeSVG('↑', '#0D47A1')],
-            'right': [makeSVG('→', '#2196F3'), makeSVG('→', '#1976D2'), makeSVG('→', '#2196F3'), makeSVG('→', '#0D47A1')],
-            'down-right': [makeSVG('↘', '#2196F3'), makeSVG('↘', '#1976D2'), makeSVG('↘', '#2196F3'), makeSVG('↘', '#0D47A1')],
-            'up-right': [makeSVG('↗', '#2196F3'), makeSVG('↗', '#1976D2'), makeSVG('↗', '#2196F3'), makeSVG('↗', '#0D47A1')]
-            // Left directions are handled automatically!
+                './images/kris_idle_down.png', 
+                './images/kris_walk_down_1.png', 
+                './images/kris_idle_down.png',   
+                'FLIP:./images/kris_walk_down_1.png'   
+            ],
+            'up': [
+                './images/kris_idle_up.png', 
+                './images/kris_walk_up_1.png', 
+                './images/kris_idle_up.png',   
+                'FLIP:./images/kris_walk_up_1.png' 
+            ],
+            'right': [
+                './images/kris_idle_right.png', 
+                './images/kris_walk_right_1.png', 
+                './images/kris_idle_right.png',   
+                './images/kris_walk_right_2.png' 
+            ],
+            'down-right': [
+                './images/kris_idle_dr.png', 
+                './images/kris_walk_dr_1.png', 
+                './images/kris_idle_dr.png',   
+                './images/kris_walk_dr_2.png' 
+            ],
+            'up-right': [
+                './images/kris_idle_ur.png', 
+                './images/kris_walk_ur_1.png', 
+                './images/kris_idle_ur.png',   
+                './images/kris_walk_ur_2.png' 
+            ]
         }
     };
 
@@ -154,24 +162,25 @@
     const player = {
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
-        scale: 3,           // Change this number to scale the sprite up or down!
-        speed: 2,           // Current active speed
-        walkSpeed: 2,       // Deltarune default walking speed (adjusted for 60fps)
-        runSpeed: 3,        // Deltarune running speed (adjusted for 60fps)
-        direction: 'down',  // Current facing direction
+        scale: 3,           
+        speed: 2,           
+        walkSpeed: 2,       
+        runSpeed: 3,        
+        direction: 'down',  
         isMoving: false,
         isRunning: false,
         frameIndex: 0,
         frameTimer: 0,
-        walkAnimSpeed: 10,  // Frames to wait before switching sprite when walking
-        runAnimSpeed: 6     // Frames to wait before switching sprite when running (faster!)
+        walkAnimSpeed: 10,  
+        runAnimSpeed: 6,
+        currentSrc: null    // Added to reliably track the image state in memory
     };
 
     // Input tracking
     const keys = {
         ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
         w: false, a: false, s: false, d: false,
-        Shift: false, x: false // Run buttons
+        Shift: false, x: false 
     };
 
     // Keyboard Listeners
@@ -246,8 +255,7 @@
             else if (dx > 0 && dy < 0) player.direction = 'up-right';
             else if (dx < 0 && dy < 0) player.direction = 'up-left';
 
-            // Normalize diagonal movement speed (Pythagorean theorem!)
-            // If we didn't do this, diagonal movement would be 1.4x faster
+            // Normalize diagonal movement speed
             const length = Math.sqrt(dx * dx + dy * dy);
             dx = dx / length;
             dy = dy / length;
@@ -256,10 +264,14 @@
             player.x += dx * player.speed;
             player.y += dy * player.speed;
 
-            // Screen boundaries clamping (using getBoundingClientRect for scaled size)
+            // Screen boundaries clamping
             const rect = spriteElement.getBoundingClientRect();
-            const halfWidth = rect.width / 2;
-            const halfHeight = rect.height / 2;
+            // Fallback so it doesn't break if an image is missing
+            const fallbackWidth = rect.width || 57; 
+            const fallbackHeight = rect.height || 114;
+            
+            const halfWidth = fallbackWidth / 2;
+            const halfHeight = fallbackHeight / 2;
             player.x = Math.max(halfWidth, Math.min(window.innerWidth - halfWidth, player.x));
             player.y = Math.max(halfHeight, Math.min(window.innerHeight - halfHeight, player.y));
         }
@@ -269,13 +281,11 @@
         const state = player.isMoving ? 'walk' : 'idle';
         const currentSpriteArray = SPRITES[state][player.direction];
 
-        // If we only have 1 frame for this state/direction, just show it
         if (currentSpriteArray.length <= 1) {
             player.frameIndex = 0;
             return;
         }
 
-        // Animate if moving or if idle has multiple frames
         player.frameTimer++;
         const currentAnimSpeed = player.isRunning ? player.runAnimSpeed : player.walkAnimSpeed;
         
@@ -284,50 +294,55 @@
             player.frameIndex = (player.frameIndex + 1) % currentSpriteArray.length;
         }
 
-        // Reset animation index if we stop moving to prevent weird snapping
         if (!player.isMoving && SPRITES.idle[player.direction].length === 1) {
              player.frameIndex = 0;
         }
     }
 
     function render() {
-        // Move the physical element on the screen
-        // We use Math.round() to prevent sub-pixel rendering, keeping it perfectly crisp!
         spriteElement.style.left = `${Math.round(player.x)}px`;
         spriteElement.style.top = `${Math.round(player.y)}px`;
 
-        // Flip the sprite horizontally if facing any left direction
-        // We apply the player.scale here so the raw pixel art is big enough to see
-        const isFacingLeft = player.direction.includes('left');
-        spriteElement.style.transform = `translate(-50%, -50%) scale(${isFacingLeft ? -player.scale : player.scale}, ${player.scale})`;
-
-        // Update the image source based on current state, direction, and animation frame
         const state = player.isMoving ? 'walk' : 'idle';
         
-        // Failsafe in case a sprite array is missing or empty during user injection
         if (SPRITES[state] && SPRITES[state][player.direction]) {
             const frames = SPRITES[state][player.direction];
-            // Ensure the frame index doesn't go out of bounds if arrays have different lengths
             const safeFrameIndex = player.frameIndex % frames.length;
-            spriteElement.src = frames[safeFrameIndex];
+            let targetSrc = frames[safeFrameIndex];
+            
+            // Base horizontal flip based on direction
+            let isFlipped = player.direction.includes('left');
+
+            // Allow specific animation frames to be mirrored (e.g., FLIP:./images/...)
+            if (targetSrc.startsWith('FLIP:')) {
+                isFlipped = !isFlipped; // Toggle flip state
+                targetSrc = targetSrc.replace('FLIP:', ''); // Remove prefix before loading
+            }
+
+            // Apply scale and potential flip
+            spriteElement.style.transform = `translate(-50%, -50%) scale(${isFlipped ? -player.scale : player.scale}, ${player.scale})`;
+            
+            // Compare against our memory variable instead of the DOM to guarantee the first frame loads
+            if (player.currentSrc !== targetSrc) {
+                player.currentSrc = targetSrc;
+                spriteElement.src = targetSrc;
+            }
         }
     }
 
-    // Handle window resize so player doesn't get stuck outside screen
     window.addEventListener('resize', () => {
         const rect = spriteElement.getBoundingClientRect();
-        const halfWidth = rect.width / 2;
-        const halfHeight = rect.height / 2;
+        const fallbackWidth = rect.width || 57; 
+        const fallbackHeight = rect.height || 114;
+        
+        const halfWidth = fallbackWidth / 2;
+        const halfHeight = fallbackHeight / 2;
         player.x = Math.max(halfWidth, Math.min(window.innerWidth - halfWidth, player.x));
         player.y = Math.max(halfHeight, Math.min(window.innerHeight - halfHeight, player.y));
     });
 
-    // Start the game loop
-    window.onload = () => {
-        // Initial setup
-        spriteElement.src = SPRITES.idle.down[0];
-        requestAnimationFrame(gameLoop);
-    };
+    // Start the game loop immediately! (No need to wait for window.onload)
+    requestAnimationFrame(gameLoop);
 
 </script>
 </body>
