@@ -4,15 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <!-- Open Graph / Discord / Facebook Meta Tags -->
     <meta property="og:title" content="kristroller">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://dorkvoid.github.io/kris/">
     <meta property="og:image" content="https://dorkvoid.github.io/kris/images/preview.png">
     <meta property="og:description" content="kris controller. kristroller">
-    <meta name="theme-color" content="#88c946"> <!-- Colors the little bar on the side of the Discord embed! -->
+    <meta name="theme-color" content="#88c946">
 
-    <!-- Twitter / Large Image Meta Tags -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="kristroller">
     <meta name="twitter:description" content="kris controller. kristroller">
@@ -20,6 +18,13 @@
 
     <title>kristroller</title>
     <style>
+        @font-face {
+            font-family: 'PixeloidSans';
+            src: url('./fonts/PixeloidSans.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+
         body, html {
             margin: 0;
             padding: 0;
@@ -119,7 +124,276 @@
             -webkit-user-select: none;
         }
 
-        /* --- THE NEW MOBILE UI --- */
+        #speech-bubble {
+            position: absolute;
+            color: white;
+            font-family: 'PixeloidSans', 'Courier New', Courier, monospace;
+            font-size: 18px;
+            padding: 2px 2px;
+            
+            width: max-content;
+            max-width: 250px;
+            word-wrap: break-word;
+            text-align: center;
+            
+            z-index: 50;
+            pointer-events: none; 
+            
+            /* 9-slice bubble box configuration */
+            border-style: solid;
+            border-width: 12px;
+            border-image-source: url('./images/bubble_box.png');
+            border-image-slice: 4 fill;
+            border-image-repeat: stretch;
+            
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated; 
+
+            /* Transition parameters for opening and closing */
+            opacity: 0;
+            visibility: hidden;
+            transform: translate(-50%, -100%) scale(0.85);
+            transform-origin: bottom center;
+            transition: opacity 0.15s ease-out, transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.15), visibility 0.15s;
+        }
+
+        #speech-bubble.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -100%) scale(1);
+        }
+
+        #speech-bubble::after {
+            content: '';
+            display: block;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 18px; 
+            height: 15px; 
+            bottom: -24px; 
+            background-image: url('./images/bubble_tail.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            image-rendering: pixelated;
+            z-index: 10;
+        }
+
+        /* Hidden measuring container used to pre-calculate bubble bounds */
+        #speech-text-measure {
+            visibility: hidden;
+            display: block;
+            height: 0;
+            overflow: hidden;
+            white-space: pre-wrap;
+        }
+
+        #speech-text {
+            white-space: pre-wrap;
+            display: block;
+        }
+
+        #chat-input-container {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            /* Triple-border container style */
+            background: black;
+            border: 4px solid white;
+            box-shadow: 0 0 0 4px black;
+            padding: 16px 24px;
+            box-sizing: border-box;
+            
+            /* CSS transitions for smooth opening */
+            width: 90%;
+            max-width: 600px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-50%) translateY(20px);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+
+        #chat-input-container.chat-active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        #chat-input-wrapper {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .asterisk {
+            color: white;
+            font-family: 'PixeloidSans', 'Courier New', Courier, monospace;
+            font-size: 24px;
+            margin-right: 12px;
+            line-height: 1;
+            user-select: none;
+        }
+
+        #chat-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            font-family: 'PixeloidSans', 'Courier New', Courier, monospace;
+            font-size: 24px;
+            outline: none;
+            text-align: left;
+            -webkit-font-smoothing: none;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        #chat-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Translucent white selection highlight */
+        #chat-input::selection {
+            background-color: rgba(255, 255, 255, 0.3);
+            color: white; 
+        }
+        #chat-input::-moz-selection {
+            background-color: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        #chat-hint-container {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: opacity 0.5s ease;
+            z-index: 800;
+            pointer-events: none;
+        }
+
+        #chat-hint-container.hidden {
+            opacity: 0;
+        }
+
+        #chat-hint {
+            color: #999999;
+            font-family: 'PixeloidSans', 'Courier New', Courier, monospace;
+            font-size: 14px;
+            white-space: nowrap;
+            user-select: none;
+            /* Fade in and out animation */
+            animation: pulseFade 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseFade {
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+
+        #character-selector {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            z-index: 900;
+        }
+
+        #menu-toggle {
+            width: 32px;
+            height: 24px;
+            position: relative;
+            pointer-events: auto;
+            margin-bottom: 24px;
+            margin-left: 8px;
+        }
+
+        #menu-toggle .line {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background-color: #aaa;
+            left: 0;
+            border-radius: 0; /* Sharp, blocky edges */
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+
+        #menu-toggle .line.top { top: 0; }
+        #menu-toggle .line.middle { top: 10px; }
+        #menu-toggle .line.bottom { top: 20px; }
+
+        /* Morph into V (Down Arrow) */
+        #character-selector.open #menu-toggle .line.top {
+            transform: translateY(10px) translateX(-6px) rotate(-45deg) scaleX(0.6);
+        }
+        #character-selector.open #menu-toggle .line.middle {
+            transform: translateY(0px) translateX(6px) rotate(45deg) scaleX(0.6);
+        }
+        #character-selector.open #menu-toggle .line.bottom {
+            opacity: 0;
+            transform: translateY(-10px) scale(0);
+        }
+
+        #char-dropdown {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            pointer-events: none; 
+        }
+
+        .char-box {
+            background: black;
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px black; /* Black border around the white */
+            width: 48px;
+            height: 48px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            
+            /* Initial closed state */
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-20px) scale(0.8);
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+        }
+
+        .char-box:hover {
+            transform: scale(1.1) !important;
+        }
+
+        /* Open state staggered animations */
+        #character-selector.open .char-box {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) scale(1);
+        }
+
+        #character-selector.open .char-box:nth-child(1) { transition-delay: 0.05s; }
+        #character-selector.open .char-box:nth-child(2) { transition-delay: 0.1s; }
+        #character-selector.open .char-box:nth-child(3) { transition-delay: 0.15s; }
+
+        #character-selector:not(.open) .char-box:nth-child(1) { transition-delay: 0.1s; }
+        #character-selector:not(.open) .char-box:nth-child(2) { transition-delay: 0.05s; }
+        #character-selector:not(.open) .char-box:nth-child(3) { transition-delay: 0s; }
+
+        .char-icon {
+            width: 32px;
+            height: 32px;
+            image-rendering: pixelated;
+            pointer-events: none;
+            opacity: 0.5; /* Makes the white icon look grey against the black box */
+            transition: opacity 0.2s ease;
+        }
+
+        .char-box:hover .char-icon {
+            opacity: 1; /* Brightens up to full white when hovered */
+        }
+
         #mobile-ui {
             position: absolute;
             bottom: 0;
@@ -133,6 +407,12 @@
         @media (min-width: 768px) {
             #mobile-ui {
                 display: none; 
+            }
+        }
+
+        @media (max-width: 768px) {
+            #chat-hint-container {
+                display: none; /* Mobile users have a dedicated button, hide hint */
             }
         }
 
@@ -160,10 +440,9 @@
             transition: transform 0.2s ease-out; 
         }
 
-        #mobile-run-btn {
+        .mobile-btn {
             position: absolute;
             bottom: 60px;
-            right: 40px;
             width: 80px;
             height: 80px;
             background-color: rgba(0, 0, 0, 0.15);
@@ -174,7 +453,7 @@
             align-items: center;
             color: rgba(0,0,0,0.5);
             font-weight: bold;
-            font-size: 20px;
+            font-size: 18px;
             pointer-events: auto; 
             touch-action: none;
             user-select: none;
@@ -182,7 +461,10 @@
             transition: background-color 0.1s, color 0.1s;
         }
 
-        #mobile-run-btn:active, .mobile-run-active {
+        #mobile-run-btn { right: 40px; }
+        #mobile-chat-btn { right: 130px; font-size: 16px;}
+
+        .mobile-btn:active, .mobile-btn-active {
             background-color: rgba(0, 0, 0, 0.4) !important;
             color: white !important;
         }
@@ -190,78 +472,104 @@
     </style>
 </head>
 <body>
+
 <div id="game-container">
     <img id="custom-cursor" src="./images/cursor.png" alt="cursor">
     <img id="instruction-bg" src="./images/instr.png" alt="Instructions" draggable="false">
     <img id="player-shadow" src="./images/shadow.png" alt="shadow" draggable="false">
     <img id="player-sprite" alt="Kris" draggable="false">
+    
+    <!-- Speech bubble elements with sizing measurement component -->
+    <div id="speech-bubble">
+        <span id="speech-text-measure"></span>
+        <span id="speech-text"></span>
+    </div>
 </div>
 
+<!-- Character Swapping UI -->
+<div id="character-selector">
+    <div id="menu-toggle">
+        <div class="line top"></div>
+        <div class="line middle"></div>
+        <div class="line bottom"></div>
+    </div>
+    <div id="char-dropdown">
+        <div class="char-box" data-char="kris"><img class="char-icon" src="./images/kris_icon.png" alt="Kris" draggable="false"></div>
+        <div class="char-box" data-char="susie"><img class="char-icon" src="./images/susie_icon.png" alt="Susie" draggable="false"></div>
+        <!-- Ralsei is disabled for now until sprites are ready -->
+        <!-- <div class="char-box" data-char="ralsei"><img class="char-icon" src="./images/ralsei_icon.png" alt="Ralsei" draggable="false"></div> -->
+    </div>
+</div>
+
+<!-- Input dialog markup -->
+<div id="chat-input-container">
+    <div id="chat-input-wrapper">
+        <span class="asterisk">*</span>
+        <input type="text" id="chat-input" maxlength="100" placeholder="Type your dialogue here." autocomplete="off">
+    </div>
+</div>
+
+<!-- Initial type hint -->
+<div id="chat-hint-container">
+    <div id="chat-hint">ENTER to chat.</div>
+</div>
+
+<!-- Mobile touchscreen controller layout -->
 <div id="mobile-ui">
     <div id="joystick-base">
         <div id="joystick-stick"></div>
     </div>
-    <div id="mobile-run-btn">RUN</div>
+    <div id="mobile-chat-btn" class="mobile-btn">CHAT</div>
+    <div id="mobile-run-btn" class="mobile-btn">RUN</div>
 </div>
 
 <script>
-    const SPRITES = {
-        idle: {
-            'down': ['./images/kris_idle_down.png'],
-            'up': ['./images/kris_idle_up.png'],
-            'right': ['./images/kris_idle_right.png'],
-            'down-right': ['./images/kris_idle_dr.png'],
-            'up-right': ['./images/kris_idle_ur.png']
-        },
-        walk: {
-            'down': [
-                './images/kris_idle_down.png', 
-                './images/kris_walk_down_1.png', 
-                './images/kris_idle_down.png',   
-                './images/kris_walk_down_2.png'   
-            ],
-            'up': [
-                './images/kris_idle_up.png', 
-                './images/kris_walk_up_1.png', 
-                './images/kris_idle_up.png',   
-                './images/kris_walk_up_2.png' 
-            ],
-            'right': [
-                './images/kris_idle_right.png', 
-                './images/kris_walk_right_1.png', 
-                './images/kris_idle_right.png',   
-                './images/kris_walk_right_2.png' 
-            ],
-            'down-right': [
-                './images/kris_idle_dr.png', 
-                './images/kris_walk_dr_1.png', 
-                './images/kris_idle_dr.png',   
-                './images/kris_walk_dr_2.png' 
-            ],
-            'up-right': [
-                './images/kris_idle_ur.png', 
-                './images/kris_walk_ur_1.png', 
-                './images/kris_idle_ur.png',   
-                './images/kris_walk_ur_2.png' 
-            ]
-        }
+    // Automates sprite path generation for any new characters you add
+    const generateSprites = (charName) => {
+        const s = {
+            idle: {
+                'down': [`./images/${charName}_idle_down.png`],
+                'up': [`./images/${charName}_idle_up.png`],
+                'right': [`./images/${charName}_idle_right.png`],
+                'down-right': [`./images/${charName}_idle_dr.png`],
+                'up-right': [`./images/${charName}_idle_ur.png`]
+            },
+            walk: {
+                'down': [`./images/${charName}_idle_down.png`, `./images/${charName}_walk_down_1.png`, `./images/${charName}_idle_down.png`, `./images/${charName}_walk_down_2.png`],
+                'up': [`./images/${charName}_idle_up.png`, `./images/${charName}_walk_up_1.png`, `./images/${charName}_idle_up.png`, `./images/${charName}_walk_up_2.png`],
+                'right': [`./images/${charName}_idle_right.png`, `./images/${charName}_walk_right_1.png`, `./images/${charName}_idle_right.png`, `./images/${charName}_walk_right_2.png`],
+                'down-right': [`./images/${charName}_idle_dr.png`, `./images/${charName}_walk_dr_1.png`, `./images/${charName}_idle_dr.png`, `./images/${charName}_walk_dr_2.png`],
+                'up-right': [`./images/${charName}_idle_ur.png`, `./images/${charName}_walk_ur_1.png`, `./images/${charName}_idle_ur.png`, `./images/${charName}_walk_ur_2.png`]
+            }
+        };
+        
+        ['idle', 'walk'].forEach(state => {
+            s[state]['left'] = s[state]['right'];
+            s[state]['down-left'] = s[state]['down-right'];
+            s[state]['up-left'] = s[state]['up-right'];
+        });
+        
+        return s;
     };
 
-    ['idle', 'walk'].forEach(state => {
-        SPRITES[state]['left'] = SPRITES[state]['right'];
-        SPRITES[state]['down-left'] = SPRITES[state]['down-right'];
-        SPRITES[state]['up-left'] = SPRITES[state]['up-right'];
-    });
+    const SPRITES = {
+        kris: generateSprites('kris'),
+        susie: generateSprites('susie'),
+        ralsei: generateSprites('ralsei')
+    };
 
+    // Asset loader queue
     const preloadedImages = {};
-    Object.keys(SPRITES).forEach(state => {
-        Object.keys(SPRITES[state]).forEach(dir => {
-            SPRITES[state][dir].forEach(src => {
-                if (!preloadedImages[src]) {
-                    const img = new Image();
-                    img.src = src;
-                    preloadedImages[src] = img; 
-                }
+    Object.keys(SPRITES).forEach(character => {
+        Object.keys(SPRITES[character]).forEach(state => {
+            Object.keys(SPRITES[character][state]).forEach(dir => {
+                SPRITES[character][state][dir].forEach(src => {
+                    if (!preloadedImages[src]) {
+                        const img = new Image();
+                        img.src = src;
+                        preloadedImages[src] = img; 
+                    }
+                });
             });
         });
     });
@@ -269,8 +577,27 @@
     const spriteElement = document.getElementById('player-sprite');
     const shadowElement = document.getElementById('player-shadow');
     const customCursor = document.getElementById('custom-cursor');
+    const speechBubble = document.getElementById('speech-bubble');
+    const speechTextMeasure = document.getElementById('speech-text-measure');
+    const speechText = document.getElementById('speech-text');
+    const chatContainer = document.getElementById('chat-input-container');
+    const chatInput = document.getElementById('chat-input');
+    const chatHintContainer = document.getElementById('chat-hint-container');
+    
+    // Audio engine configurations
+    const sqekSound = new Audio('./sqek.mp3');
+    sqekSound.volume = 0.2; 
 
-    // --- CUSTOM CURSOR TRACKING ---
+    const txtSound = new Audio('./SND_TXT1.wav');
+    txtSound.volume = 0.4;
+
+    const susTxtSound = new Audio('./sus_txt.mp3');
+    susTxtSound.volume = 0.4;
+
+    const selectSound = new Audio('./snd_select.wav');
+    selectSound.volume = 0.4;
+
+    // Custom rendering loop tracking for the mouse pointer
     const FALLBACK_CURSOR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpolygon points='0,0 0,14 4,10 8,14 11,12 7,8 12,8' fill='white' stroke='black' stroke-width='1'/%3E%3C/svg%3E";
     customCursor.addEventListener('error', function() {
         if (this.src !== FALLBACK_CURSOR) this.src = FALLBACK_CURSOR;
@@ -297,13 +624,20 @@
         }
     });
     
-    // --- PREVIEW FALLBACK ---
+    // Canvas fallback sprite vector graphics
     const FALLBACK_SPRITE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='38' viewBox='0 0 19 38' shape-rendering='crispEdges'%3E%3Crect x='5' y='5' width='9' height='8' fill='%23555'/%3E%3Crect x='6' y='8' width='7' height='5' fill='%23fcd3a2'/%3E%3Crect x='4' y='13' width='11' height='12' fill='%2388c946'/%3E%3Crect x='4' y='17' width='11' height='3' fill='%23ffde24'/%3E%3Crect x='5' y='25' width='4' height='10' fill='%23444'/%3E%3Crect x='10' y='25' width='4' height='10' fill='%23444'/%3E%3C/svg%3E";
     spriteElement.addEventListener('error', function() {
         if (this.src !== FALLBACK_SPRITE) this.src = FALLBACK_SPRITE;
     });
 
+    const CHAR_CONFIG = {
+        kris: { bubbleOffset: 124, shadowScale: 1.0, textSound: txtSound },
+        susie: { bubbleOffset: 155, shadowScale: 1.3, textSound: susTxtSound },
+        ralsei: { bubbleOffset: 135, shadowScale: 1.1, textSound: txtSound }
+    };
+
     const player = {
+        character: 'kris',  // Tracks current character
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
         scale: 3,           
@@ -321,73 +655,200 @@
         currentSrc: null,
         squishY: 1.0,       
         squishX: 1.0,       
-        gamepadSquishReady: false 
+        gamepadSquishReady: false,
+        isTyping: false
     };
 
-    // --- SQUISH MECHANIC WITH SOUND ---
-    const squishSound = new Audio('./sqek.mp3');
-    squishSound.volume = 0.2; 
-
+    // Sprite squish logic tracking physics scale limits
     const squishKris = (e) => {
-        if (e && e.type === 'mousedown' && e.button !== 0) return; 
-        
+        if (e.type === 'mousedown' && e.button !== 0) return; 
         player.squishY = 0.5; 
         player.squishX = 1.3; 
         
-        squishSound.currentTime = 0;
-        squishSound.play().catch(err => {
-            console.log("Squish sound blocked until player interacts with the page.");
-        });
+        sqekSound.currentTime = 0;
+        sqekSound.play().catch(() => {});
     };
     spriteElement.addEventListener('mousedown', squishKris);
     spriteElement.addEventListener('touchstart', squishKris, {passive: true});
 
-    // --- INPUT TRACKING (FIXED FOR INTERNATIONAL KEYBOARDS) ---
-    // Instead of mapping 'w' 'a' 's' 'd' letters which change depending on the layout,
-    // we map directly to logical up/down/left/right concepts.
+    // Character UI Selection Logic
+    const charSelector = document.getElementById('character-selector');
+    const menuToggle = document.getElementById('menu-toggle');
+    
+    const toggleMenu = (e) => {
+        e.preventDefault();
+        charSelector.classList.toggle('open');
+    };
+
+    menuToggle.addEventListener('mousedown', toggleMenu);
+    menuToggle.addEventListener('touchstart', toggleMenu, {passive: false});
+
+    document.querySelectorAll('.char-box').forEach(box => {
+        const selectCharacter = (e) => {
+            e.preventDefault();
+            const newChar = box.getAttribute('data-char');
+            
+            if (player.character !== newChar) {
+                player.character = newChar;
+                
+                // Poof transition effect
+                player.squishY = 0.2;
+                player.squishX = 2.0;
+                selectSound.currentTime = 0;
+                selectSound.play().catch(() => {});
+            }
+            
+            // Close menu after selection
+            charSelector.classList.remove('open');
+            document.body.focus();
+        };
+
+        box.addEventListener('mousedown', selectCharacter);
+        box.addEventListener('touchstart', selectCharacter, {passive: false});
+    });
+
+    document.querySelectorAll('.char-icon').forEach(icon => {
+        icon.addEventListener('error', function() {
+            this.src = FALLBACK_CURSOR; 
+        });
+    });
+
+    // Automatically fade out the enter hint after 6 seconds
+    let hintTimeout = setTimeout(() => {
+        if (chatHintContainer) chatHintContainer.classList.add('hidden');
+    }, 6000);
+
+    let typingInterval = null;
+    let hideTimeout = null;
+
+    function toggleChat() {
+        // Immediately hide hint if user triggers chat early
+        if (chatHintContainer && !chatHintContainer.classList.contains('hidden')) {
+            chatHintContainer.classList.add('hidden');
+        }
+
+        if (!chatContainer.classList.contains('chat-active')) {
+            // Open Chat dialog
+            Object.keys(keys).forEach(k => keys[k] = false);
+            chatContainer.classList.add('chat-active');
+            setTimeout(() => { chatInput.focus(); }, 50);
+        } else {
+            // Close Chat dialog and submit text
+            chatContainer.classList.remove('chat-active');
+            
+            const text = chatInput.value.trim();
+            chatInput.value = ''; 
+            
+            if (text.length > 0) {
+                if (hideTimeout) clearTimeout(hideTimeout);
+                if (typingInterval) clearInterval(typingInterval);
+                
+                // Establish dimensions of bubble before typewriter executes
+                speechTextMeasure.textContent = text;
+                speechText.textContent = '';
+                
+                // Show speech bubble using CSS scale and opacity animation
+                speechBubble.classList.add('visible');
+                
+                let i = 0;
+                typingInterval = setInterval(() => {
+                    speechText.textContent += text[i];
+                    
+                    // Trigger key click sound
+                    if (text[i] !== ' ') {
+                        let activeSound = CHAR_CONFIG[player.character].textSound;
+                        let snd = activeSound.cloneNode();
+                        snd.volume = 0.4;
+                        snd.play().catch(() => {});
+                    }
+                    
+                    i++;
+                    if (i >= text.length) {
+                        clearInterval(typingInterval);
+                        hideTimeout = setTimeout(() => {
+                            // Hide speech bubble smoothly
+                            speechBubble.classList.remove('visible');
+                        }, 4000); 
+                    }
+                }, 40); 
+            }
+            
+            // Release cursor focus
+            chatInput.blur();
+            document.body.focus();
+        }
+    }
+
     const keys = {
-        up: false, down: false, left: false, right: false,
-        run: false 
+        ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
+        KeyW: false, KeyA: false, KeyS: false, KeyD: false,
+        ShiftLeft: false, ShiftRight: false, KeyX: false 
     };
 
     window.addEventListener('keydown', (e) => {
-        // Checking both e.code (physical key) and e.key (logical key) ensures complete cross-layout compatibility!
-        if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.key === 'w' || e.key === 'W') keys.up = true;
-        if (e.code === 'ArrowDown' || e.code === 'KeyS' || e.key === 's' || e.key === 'S') keys.down = true;
-        if (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.key === 'a' || e.key === 'A') keys.left = true;
-        if (e.code === 'ArrowRight' || e.code === 'KeyD' || e.key === 'd' || e.key === 'D') keys.right = true;
+        // Toggle chat on Enter
+        if (e.code === 'Enter') {
+            e.preventDefault();
+            toggleChat();
+            return;
+        }
+
+        // Cancel chat on Escape
+        if (e.code === 'Escape' && chatContainer.classList.contains('chat-active')) {
+            e.preventDefault();
+            chatContainer.classList.remove('chat-active');
+            chatInput.value = ''; // clear input without sending
+            chatInput.blur();
+            document.body.focus();
+            return;
+        }
         
-        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift' || e.code === 'KeyX' || e.key === 'x' || e.key === 'X') {
-            keys.run = true;
-            if (e.key === 'Shift') e.preventDefault();
+        // Prevent key registers from moving character while active in the textbox
+        if (document.activeElement === chatInput) return;
+
+        if (keys.hasOwnProperty(e.code)) {
+            keys[e.code] = true;
+            if (e.code.includes('Shift')) e.preventDefault();
         }
     });
 
     window.addEventListener('keyup', (e) => {
-        if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.key === 'w' || e.key === 'W') keys.up = false;
-        if (e.code === 'ArrowDown' || e.code === 'KeyS' || e.key === 's' || e.key === 'S') keys.down = false;
-        if (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.key === 'a' || e.key === 'A') keys.left = false;
-        if (e.code === 'ArrowRight' || e.code === 'KeyD' || e.key === 'd' || e.key === 'D') keys.right = false;
-        
-        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift' || e.code === 'KeyX' || e.key === 'x' || e.key === 'X') keys.run = false;
+        if (document.activeElement === chatInput) return;
+
+        if (keys.hasOwnProperty(e.code)) {
+            keys[e.code] = false;
+        }
     });
 
     // --- VIRTUAL JOYSTICK LOGIC ---
     const joystickBase = document.getElementById('joystick-base');
     const joystickStick = document.getElementById('joystick-stick');
     const mobileRunBtn = document.getElementById('mobile-run-btn');
+    const mobileChatBtn = document.getElementById('mobile-chat-btn');
 
     let joyDX = 0;
     let joyDY = 0;
     let isJoystickActive = false;
 
     const handleJoystickMove = (e) => {
-        e.preventDefault(); 
+        // Automatically unfocus chat if player touches the joystick
+        if (document.activeElement === chatInput) {
+            chatInput.blur();
+        }
+        
+        if (e && e.cancelable) e.preventDefault(); 
         isJoystickActive = true;
         joystickStick.style.transition = 'none'; 
         
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        let clientX, clientY;
+        // targetTouches isolates the finger actually touching the joystick, fixing multi-touch bugs
+        if (e.targetTouches && e.targetTouches.length > 0) {
+            clientX = e.targetTouches[0].clientX;
+            clientY = e.targetTouches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
         
         const rect = joystickBase.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
@@ -409,14 +870,14 @@
         
         joyDX = 0;
         joyDY = 0;
-        const threshold = 15; 
         
-        if (distance > threshold) {
-            if (deltaX > threshold) joyDX = 1;
-            else if (deltaX < -threshold) joyDX = -1;
+        // Removed deadzone gap, calculating 8-way direction proportionally
+        if (distance > 5) {
+            const absX = Math.abs(deltaX);
+            const absY = Math.abs(deltaY);
             
-            if (deltaY > threshold) joyDY = 1;
-            else if (deltaY < -threshold) joyDY = -1;
+            if (absX > absY * 0.4) joyDX = Math.sign(deltaX);
+            if (absY > absX * 0.4) joyDY = Math.sign(deltaY);
         }
     };
 
@@ -429,29 +890,47 @@
         joystickStick.style.transform = `translate(0px, 0px)`;
     };
 
+    // Touch events for mobile
     joystickBase.addEventListener('touchstart', handleJoystickMove, {passive: false});
     joystickBase.addEventListener('touchmove', handleJoystickMove, {passive: false});
     joystickBase.addEventListener('touchend', handleJoystickEnd);
     joystickBase.addEventListener('touchcancel', handleJoystickEnd);
+    
+    // Mouse events for easy desktop testing
+    joystickBase.addEventListener('mousedown', (e) => {
+        isJoystickActive = true;
+        handleJoystickMove(e);
+    });
+    window.addEventListener('mousemove', (e) => {
+        if (isJoystickActive) handleJoystickMove(e);
+    });
+    window.addEventListener('mouseup', handleJoystickEnd);
 
-    let mouseDragging = false;
-    joystickBase.addEventListener('mousedown', (e) => { mouseDragging = true; handleJoystickMove(e); });
-    window.addEventListener('mousemove', (e) => { if (mouseDragging) handleJoystickMove(e); });
-    window.addEventListener('mouseup', (e) => { if (mouseDragging) { mouseDragging = false; handleJoystickEnd(e); } });
-
+    // Mobile Run Button
     const toggleRun = (e, state) => {
+        if (document.activeElement === chatInput) chatInput.blur();
         if (e && e.cancelable) e.preventDefault();
-        keys.run = state;
-        if (state) mobileRunBtn.classList.add('mobile-run-active');
-        else mobileRunBtn.classList.remove('mobile-run-active');
+        keys.ShiftLeft = state;
+        if (state) mobileRunBtn.classList.add('mobile-btn-active');
+        else mobileRunBtn.classList.remove('mobile-btn-active');
     };
     
     mobileRunBtn.addEventListener('touchstart', (e) => toggleRun(e, true), {passive: false});
     mobileRunBtn.addEventListener('touchend', (e) => toggleRun(e, false));
     mobileRunBtn.addEventListener('touchcancel', (e) => toggleRun(e, false));
+    
+    // Desktop mouse fallbacks for testing Run button
     mobileRunBtn.addEventListener('mousedown', (e) => toggleRun(e, true));
     mobileRunBtn.addEventListener('mouseup', (e) => toggleRun(e, false));
     mobileRunBtn.addEventListener('mouseleave', (e) => toggleRun(e, false));
+    
+    // Mobile Chat Button
+    const triggerChatBtn = (e) => {
+        if (e && e.cancelable) e.preventDefault();
+        toggleChat();
+    };
+    mobileChatBtn.addEventListener('touchstart', triggerChatBtn, {passive: false});
+    mobileChatBtn.addEventListener('mousedown', triggerChatBtn);
 
     // --- MAIN GAME LOOP ---
     function gameLoop() {
@@ -465,22 +944,28 @@
         let dx = 0;
         let dy = 0;
         let isRunning = false;
-
-        // --- KEYBOARD SUPPORT ---
-        if (keys.up) dy -= 1;
-        if (keys.down) dy += 1;
-        if (keys.left) dx -= 1;
-        if (keys.right) dx += 1;
         
-        if (keys.run) isRunning = true;
+        // Allow movement only when the text box is unfocused
+        if (document.activeElement === chatInput) {
+            player.isMoving = false;
+            player.isRunning = false;
+            return;
+        }
 
-        // --- MOBILE JOYSTICK SUPPORT ---
+        // Read keyboard vectors
+        if (keys.ArrowUp || keys.KeyW) dy -= 1;
+        if (keys.ArrowDown || keys.KeyS) dy += 1;
+        if (keys.ArrowLeft || keys.KeyA) dx -= 1;
+        if (keys.ArrowRight || keys.KeyD) dx += 1;
+        
+        if (keys.ShiftLeft || keys.ShiftRight || keys.KeyX) isRunning = true;
+
         if (isJoystickActive) {
             dx += joyDX;
             dy += joyDY;
         }
 
-        // --- GAMEPAD (XINPUT) SUPPORT ---
+        // Read gamepad axis thresholds
         const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
         for (let i = 0; i < gamepads.length; i++) {
             const gp = gamepads[i];
@@ -504,7 +989,10 @@
 
                 if (gp.buttons[0] && gp.buttons[0].pressed) {
                     if (!player.gamepadSquishReady) {
-                        squishKris(); // Use the standard squish function to trigger sound!
+                        player.squishY = 0.5;
+                        player.squishX = 1.3;
+                        sqekSound.currentTime = 0;
+                        sqekSound.play().catch(() => {});
                         player.gamepadSquishReady = true;
                     }
                 } else {
@@ -555,7 +1043,7 @@
         player.squishX += (1.0 - player.squishX) * 0.2;
 
         const state = player.isMoving ? 'walk' : 'idle';
-        const currentSpriteArray = SPRITES[state][player.direction];
+        const currentSpriteArray = SPRITES[player.character][state][player.direction];
 
         if (currentSpriteArray.length <= 1) {
             player.frameIndex = 0;
@@ -570,23 +1058,29 @@
             player.frameIndex = (player.frameIndex + 1) % currentSpriteArray.length;
         }
 
-        if (!player.isMoving && SPRITES.idle[player.direction].length === 1) {
+        if (!player.isMoving && SPRITES[player.character].idle[player.direction].length === 1) {
              player.frameIndex = 0;
         }
     }
 
     function render() {
+        const config = CHAR_CONFIG[player.character];
+
         shadowElement.style.left = `${Math.round(player.x)}px`;
         shadowElement.style.top = `${Math.round(player.y + (player.shadowOffset * player.scale))}px`;
-        shadowElement.style.transform = `translate(-50%, -50%) scale(${player.scale * player.squishX}, ${player.scale})`;
+        shadowElement.style.transform = `translate(-50%, -50%) scale(${(player.scale * config.shadowScale) * player.squishX}, ${player.scale * config.shadowScale})`;
 
         spriteElement.style.left = `${Math.round(player.x)}px`;
         spriteElement.style.top = `${Math.round(player.y)}px`;
+        
+        // Align speech bubble offset continuously with player coordinate modifications
+        speechBubble.style.left = `${Math.round(player.x)}px`;
+        speechBubble.style.top = `${Math.round(player.y - config.bubbleOffset)}px`;
 
         const state = player.isMoving ? 'walk' : 'idle';
         
-        if (SPRITES[state] && SPRITES[state][player.direction]) {
-            const frames = SPRITES[state][player.direction];
+        if (SPRITES[player.character][state] && SPRITES[player.character][state][player.direction]) {
+            const frames = SPRITES[player.character][state][player.direction];
             const safeFrameIndex = player.frameIndex % frames.length;
             const targetSrc = frames[safeFrameIndex];
             
@@ -615,6 +1109,7 @@
         player.y = Math.max(halfHeight, Math.min(window.innerHeight - halfHeight, player.y));
     });
 
+    // Start gameloop
     requestAnimationFrame(gameLoop);
 
 </script>
