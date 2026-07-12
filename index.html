@@ -55,6 +55,7 @@
 
         #custom-cursor {
             position: fixed; 
+            left: 0; top: 0;
             width: 16px; 
             height: 16px;
             image-rendering: -webkit-optimize-contrast; 
@@ -68,6 +69,7 @@
             transform-origin: top left;
             transform: scale(2); 
             display: none; 
+            will-change: transform;
         }
 
         #instruction-bg {
@@ -87,11 +89,13 @@
             pointer-events: none;
         }
 
+        /* GPU accelerated moving elements */
         #player-shadow {
             position: absolute;
+            left: 0; top: 0;
             width: auto; 
             height: auto;
-            transform: translate(-50%, -50%);
+            transform: translate3d(0, 0, 0) translate(-50%, -50%);
             image-rendering: -webkit-optimize-contrast;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
@@ -102,13 +106,15 @@
             user-drag: none;
             -webkit-user-drag: none;
             pointer-events: none; 
+            will-change: transform;
         }
 
         #player-sprite {
             position: absolute;
+            left: 0; top: 0;
             width: auto; 
             height: auto;
-            transform: translate(-50%, -100%); 
+            transform: translate3d(0, 0, 0) translate(-50%, -100%); 
             transform-origin: center bottom; 
             image-rendering: -webkit-optimize-contrast;
             image-rendering: -moz-crisp-edges;
@@ -122,6 +128,16 @@
             pointer-events: auto; 
             user-select: none;
             -webkit-user-select: none;
+            will-change: transform;
+        }
+
+        /* Hardware accelerated position wrapper for the bubble */
+        #speech-bubble-pos {
+            position: absolute;
+            left: 0; top: 0;
+            z-index: 50;
+            pointer-events: none;
+            will-change: transform;
         }
 
         #speech-bubble {
@@ -135,9 +151,6 @@
             max-width: 250px;
             word-wrap: break-word;
             text-align: center;
-            
-            z-index: 50;
-            pointer-events: none; 
             
             /* 9-slice bubble box configuration */
             border-style: solid;
@@ -479,10 +492,12 @@
     <img id="player-shadow" src="./images/shadow.png" alt="shadow" draggable="false">
     <img id="player-sprite" alt="Kris" draggable="false">
     
-    <!-- Speech bubble elements with sizing measurement component -->
-    <div id="speech-bubble">
-        <span id="speech-text-measure"></span>
-        <span id="speech-text"></span>
+    <!-- Speech bubble positioned via hardware accelerated container -->
+    <div id="speech-bubble-pos">
+        <div id="speech-bubble">
+            <span id="speech-text-measure"></span>
+            <span id="speech-text"></span>
+        </div>
     </div>
 </div>
 
@@ -524,6 +539,35 @@
 </div>
 
 <script>
+    // Audio Pool Generator: Prevents memory leaks and lag spikes from cloneNode()
+    function createAudioPool(src, volume = 0.4, size = 5) {
+        const pool = [];
+        for (let i = 0; i < size; i++) {
+            const audio = new Audio(src);
+            audio.volume = volume;
+            pool.push(audio);
+        }
+        let index = 0;
+        return {
+            play: () => {
+                const audio = pool[index];
+                audio.currentTime = 0;
+                audio.play().catch(() => {});
+                index = (index + 1) % size;
+            }
+        };
+    }
+
+    // Initialize optimized audio engines
+    const sqekSound = createAudioPool('./sqek.mp3', 0.2, 3);
+    const selectSound = createAudioPool('./snd_select.wav', 0.4, 2);
+
+    const CHAR_CONFIG = {
+        kris: { bubbleOffset: 124, shadowScale: 1.0, textSound: createAudioPool('./SND_TXT1.wav', 0.4, 6) },
+        susie: { bubbleOffset: 155, shadowScale: 1.3, textSound: createAudioPool('./sus_txt.mp3', 0.4, 6) },
+        ralsei: { bubbleOffset: 135, shadowScale: 1.1, textSound: createAudioPool('./SND_TXT1.wav', 0.4, 6) }
+    };
+
     // Automates sprite path generation for any new characters you add
     const generateSprites = (charName) => {
         const s = {
@@ -558,17 +602,19 @@
         ralsei: generateSprites('ralsei')
     };
 
-    // Asset loader queue
+    // Defer heavy asset preloading so it doesn't block the initial page render
     const preloadedImages = {};
-    Object.keys(SPRITES).forEach(character => {
-        Object.keys(SPRITES[character]).forEach(state => {
-            Object.keys(SPRITES[character][state]).forEach(dir => {
-                SPRITES[character][state][dir].forEach(src => {
-                    if (!preloadedImages[src]) {
-                        const img = new Image();
-                        img.src = src;
-                        preloadedImages[src] = img; 
-                    }
+    window.addEventListener('DOMContentLoaded', () => {
+        Object.keys(SPRITES).forEach(character => {
+            Object.keys(SPRITES[character]).forEach(state => {
+                Object.keys(SPRITES[character][state]).forEach(dir => {
+                    SPRITES[character][state][dir].forEach(src => {
+                        if (!preloadedImages[src]) {
+                            const img = new Image();
+                            img.src = src;
+                            preloadedImages[src] = img; 
+                        }
+                    });
                 });
             });
         });
@@ -577,25 +623,13 @@
     const spriteElement = document.getElementById('player-sprite');
     const shadowElement = document.getElementById('player-shadow');
     const customCursor = document.getElementById('custom-cursor');
+    const speechBubblePos = document.getElementById('speech-bubble-pos');
     const speechBubble = document.getElementById('speech-bubble');
     const speechTextMeasure = document.getElementById('speech-text-measure');
     const speechText = document.getElementById('speech-text');
     const chatContainer = document.getElementById('chat-input-container');
     const chatInput = document.getElementById('chat-input');
     const chatHintContainer = document.getElementById('chat-hint-container');
-    
-    // Audio engine configurations
-    const sqekSound = new Audio('./sqek.mp3');
-    sqekSound.volume = 0.2; 
-
-    const txtSound = new Audio('./SND_TXT1.wav');
-    txtSound.volume = 0.4;
-
-    const susTxtSound = new Audio('./sus_txt.mp3');
-    susTxtSound.volume = 0.4;
-
-    const selectSound = new Audio('./snd_select.wav');
-    selectSound.volume = 0.4;
 
     // Custom rendering loop tracking for the mouse pointer
     const FALLBACK_CURSOR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpolygon points='0,0 0,14 4,10 8,14 11,12 7,8 12,8' fill='white' stroke='black' stroke-width='1'/%3E%3C/svg%3E";
@@ -605,8 +639,7 @@
 
     window.addEventListener('mousemove', (e) => {
         customCursor.style.display = 'block';
-        customCursor.style.left = `${e.clientX}px`;
-        customCursor.style.top = `${e.clientY}px`;
+        customCursor.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) scale(2)`;
     });
     
     document.addEventListener('mouseleave', () => {
@@ -625,16 +658,10 @@
     });
     
     // Canvas fallback sprite vector graphics
-    const FALLBACK_SPRITE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='38' viewBox='0 0 19 38' shape-rendering='crispEdges'%3E%3Crect x='5' y='5' width='9' height='8' fill='%23555'/%3E%3Crect x='6' y='8' width='7' height='5' fill='%23fcd3a2'/%3E%3Crect x='4' y='13' width='11' height='12' fill='%2388c946'/%3E%3Crect x='4' y='17' width='11' height='3' fill='%23ffde24'/%3E%3Crect x='5' y='25' width='4' height='10' fill='%23444'/%3E%3Crect x='10' y='25' width='4' height='10' fill='%23444'/%3E%3C/svg%3E";
+    const FALLBACK_SPRITE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='38' height='38' viewBox='0 0 38 38' shape-rendering='crispEdges'%3E%3Crect width='38' height='38' fill='black'/%3E%3Crect x='10' y='12' width='4' height='4' fill='white'/%3E%3Crect x='24' y='12' width='4' height='4' fill='white'/%3E%3Crect x='10' y='22' width='4' height='4' fill='white'/%3E%3Crect x='14' y='26' width='10' height='4' fill='white'/%3E%3Crect x='24' y='22' width='4' height='4' fill='white'/%3E%3C/svg%3E";
     spriteElement.addEventListener('error', function() {
         if (this.src !== FALLBACK_SPRITE) this.src = FALLBACK_SPRITE;
     });
-
-    const CHAR_CONFIG = {
-        kris: { bubbleOffset: 124, shadowScale: 1.0, textSound: txtSound },
-        susie: { bubbleOffset: 155, shadowScale: 1.3, textSound: susTxtSound },
-        ralsei: { bubbleOffset: 135, shadowScale: 1.1, textSound: txtSound }
-    };
 
     const player = {
         character: 'kris',  // Tracks current character
@@ -664,9 +691,7 @@
         if (e.type === 'mousedown' && e.button !== 0) return; 
         player.squishY = 0.5; 
         player.squishX = 1.3; 
-        
-        sqekSound.currentTime = 0;
-        sqekSound.play().catch(() => {});
+        sqekSound.play();
     };
     spriteElement.addEventListener('mousedown', squishKris);
     spriteElement.addEventListener('touchstart', squishKris, {passive: true});
@@ -694,8 +719,7 @@
                 // Poof transition effect
                 player.squishY = 0.2;
                 player.squishX = 2.0;
-                selectSound.currentTime = 0;
-                selectSound.play().catch(() => {});
+                selectSound.play();
             }
             
             // Close menu after selection
@@ -754,12 +778,9 @@
                 typingInterval = setInterval(() => {
                     speechText.textContent += text[i];
                     
-                    // Trigger key click sound
+                    // Trigger character-specific pooled sound
                     if (text[i] !== ' ') {
-                        let activeSound = CHAR_CONFIG[player.character].textSound;
-                        let snd = activeSound.cloneNode();
-                        snd.volume = 0.4;
-                        snd.play().catch(() => {});
+                        CHAR_CONFIG[player.character].textSound.play();
                     }
                     
                     i++;
@@ -866,7 +887,7 @@
             visualX = (deltaX / distance) * maxDist;
             visualY = (deltaY / distance) * maxDist;
         }
-        joystickStick.style.transform = `translate(${visualX}px, ${visualY}px)`;
+        joystickStick.style.transform = `translate3d(${visualX}px, ${visualY}px, 0)`;
         
         joyDX = 0;
         joyDY = 0;
@@ -887,7 +908,7 @@
         joyDX = 0;
         joyDY = 0;
         joystickStick.style.transition = 'transform 0.2s ease-out';
-        joystickStick.style.transform = `translate(0px, 0px)`;
+        joystickStick.style.transform = `translate3d(0px, 0px, 0)`;
     };
 
     // Touch events for mobile
@@ -991,8 +1012,7 @@
                     if (!player.gamepadSquishReady) {
                         player.squishY = 0.5;
                         player.squishX = 1.3;
-                        sqekSound.currentTime = 0;
-                        sqekSound.play().catch(() => {});
+                        sqekSound.play();
                         player.gamepadSquishReady = true;
                     }
                 } else {
@@ -1065,36 +1085,37 @@
 
     function render() {
         const config = CHAR_CONFIG[player.character];
-
-        shadowElement.style.left = `${Math.round(player.x)}px`;
-        shadowElement.style.top = `${Math.round(player.y + (player.shadowOffset * player.scale))}px`;
-        shadowElement.style.transform = `translate(-50%, -50%) scale(${(player.scale * config.shadowScale) * player.squishX}, ${player.scale * config.shadowScale})`;
-
-        spriteElement.style.left = `${Math.round(player.x)}px`;
-        spriteElement.style.top = `${Math.round(player.y)}px`;
         
-        // Align speech bubble offset continuously with player coordinate modifications
-        speechBubble.style.left = `${Math.round(player.x)}px`;
-        speechBubble.style.top = `${Math.round(player.y - config.bubbleOffset)}px`;
+        // Math.round fixes sub-pixel blurring for crisp rendering
+        const px = Math.round(player.x);
+        const py = Math.round(player.y);
+
+        // Uses GPU Hardware Acceleration via translate3d
+        shadowElement.style.transform = `translate3d(${px}px, ${Math.round(py + (player.shadowOffset * player.scale))}px, 0) translate(-50%, -50%) scale(${(player.scale * config.shadowScale) * player.squishX}, ${player.scale * config.shadowScale})`;
+        
+        // Hardware accelerated bubble position container tracking the player
+        speechBubblePos.style.transform = `translate3d(${px}px, ${Math.round(py - config.bubbleOffset)}px, 0)`;
 
         const state = player.isMoving ? 'walk' : 'idle';
-        
+        let targetSrc = player.currentSrc;
+        let finalScaleX = player.scale * player.squishX;
+        let finalScaleY = player.scale * player.squishY;
+
         if (SPRITES[player.character][state] && SPRITES[player.character][state][player.direction]) {
             const frames = SPRITES[player.character][state][player.direction];
             const safeFrameIndex = player.frameIndex % frames.length;
-            const targetSrc = frames[safeFrameIndex];
+            targetSrc = frames[safeFrameIndex];
             
             const isFlipped = player.direction.includes('left');
+            finalScaleX = (isFlipped ? -player.scale : player.scale) * player.squishX;
+        }
 
-            const finalScaleX = (isFlipped ? -player.scale : player.scale) * player.squishX;
-            const finalScaleY = player.scale * player.squishY;
-            
-            spriteElement.style.transform = `translate(-50%, -100%) scale(${finalScaleX}, ${finalScaleY})`;
-            
-            if (player.currentSrc !== targetSrc) {
-                player.currentSrc = targetSrc;
-                spriteElement.src = targetSrc;
-            }
+        // Apply final GPU hardware accelerated transform to sprite
+        spriteElement.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -100%) scale(${finalScaleX}, ${finalScaleY})`;
+
+        if (player.currentSrc !== targetSrc) {
+            player.currentSrc = targetSrc;
+            spriteElement.src = targetSrc;
         }
     }
 
