@@ -539,7 +539,6 @@
 </div>
 
 <script>
-    // Audio Pool Generator: Prevents memory leaks and lag spikes from cloneNode()
     function createAudioPool(src, volume = 0.4, size = 5) {
         const pool = [];
         for (let i = 0; i < size; i++) {
@@ -558,7 +557,6 @@
         };
     }
 
-    // Initialize optimized audio engines
     const sqekSound = createAudioPool('./sqek.mp3', 0.2, 3);
     const selectSound = createAudioPool('./snd_select.wav', 0.4, 2);
 
@@ -568,7 +566,6 @@
         ralsei: { bubbleOffset: 135, shadowScale: 1.1, textSound: createAudioPool('./SND_TXT1.wav', 0.4, 6) }
     };
 
-    // Automates sprite path generation for any new characters you add
     const generateSprites = (charName) => {
         const s = {
             idle: {
@@ -602,7 +599,6 @@
         ralsei: generateSprites('ralsei')
     };
 
-    // Defer heavy asset preloading so it doesn't block the initial page render
     const preloadedImages = {};
     window.addEventListener('DOMContentLoaded', () => {
         Object.keys(SPRITES).forEach(character => {
@@ -1086,14 +1082,11 @@
     function render() {
         const config = CHAR_CONFIG[player.character];
         
-        // Math.round fixes sub-pixel blurring for crisp rendering
         const px = Math.round(player.x);
         const py = Math.round(player.y);
 
-        // Uses GPU Hardware Acceleration via translate3d
         shadowElement.style.transform = `translate3d(${px}px, ${Math.round(py + (player.shadowOffset * player.scale))}px, 0) translate(-50%, -50%) scale(${(player.scale * config.shadowScale) * player.squishX}, ${player.scale * config.shadowScale})`;
         
-        // Hardware accelerated bubble position container tracking the player
         speechBubblePos.style.transform = `translate3d(${px}px, ${Math.round(py - config.bubbleOffset)}px, 0)`;
 
         const state = player.isMoving ? 'walk' : 'idle';
@@ -1110,7 +1103,6 @@
             finalScaleX = (isFlipped ? -player.scale : player.scale) * player.squishX;
         }
 
-        // Apply final GPU hardware accelerated transform to sprite
         spriteElement.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -100%) scale(${finalScaleX}, ${finalScaleY})`;
 
         if (player.currentSrc !== targetSrc) {
